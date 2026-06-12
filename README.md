@@ -1,40 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# 용스튜 트친소표 생성기
+![Version](https://img.shields.io/badge/version-v0.1.0-blue)
+![Status](https://img.shields.io/badge/status-prototype-orange)
 
-## Getting Started
+트친소표를 보다 편리하게 제작하고 공유하기 위해 만들어진 웹 기반 생성기입니다.
 
-First, run the development server:
+🔗 트친소표 생성기 사용하기
+https://rgg-friend.vercel.app/
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 프로젝트 소개
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+용스튜 트친소표를 웹에서 간편하게 제작할 수 있도록 만들었습니다.
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+별도의 이미지 편집 프로그램 없이 원하는 정보를 입력하고 트친소표를 생성할 수 있습니다.
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+**이미지 저장하기**
 
-To learn more about Next.js, take a look at the following resources:
+- 모바일: 이미지를 꾹 눌러 저장
+- PC: 이미지 오른쪽 클릭 후 다른이름으로 저장
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 개발 상태
 
-## Deploy on Vercel
+현재 프로토타입 버전(v0.1.0)으로 운영 중입니다.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+기능 개선 및 UI 업데이트는 제작자의 일정에 맞춰 순차적으로 진행됩니다.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+---
+
+## 제작자
+
+**ppansuman**
+
+- X(Twitter): https://x.com/ppansuman
+
+---
+
+## 업데이트 내역
+
+### v0.1.0 · 2026.06.13
+
+- 프로젝트 최초 공개
+- 용스튜 트친소표 생성기 프로토타입 배포
+- Vercel 배포 환경 구축
+
+---
+
+Made with Next.js
