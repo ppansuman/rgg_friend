@@ -432,12 +432,12 @@ function drawOptionRow(ctx, row, y) {
 
     if (spoilerOther.trim()) {
       ctx.fillStyle = COLORS.text;
-      const spoilerOtherSize = 16;
+      const spoilerOtherSize = 18;
       ctx.font = `${FONT.content.weight} ${spoilerOtherSize}pt Pretendard`;
       ctx.fontKerning = 'normal';
       const sizePx = spoilerOtherSize * (96 / 72);
       ctx.letterSpacing = `${(FONT.content.tracking / 1000) * sizePx}px`;
-      fillTextWithEmoji(ctx, spoilerOther, barX1, barY + 50, sizePx);
+      fillTextWithEmoji(ctx, spoilerOther, barX1, barY + 62, sizePx);
     }
   }
 
