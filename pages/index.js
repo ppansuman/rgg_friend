@@ -538,6 +538,7 @@ function drawOptionRow(ctx, row, y) {
   }
   
   function handleResetAll() {
+    if (!window.confirm('모든 설정을 삭제하시겠습니까?')) return;
     setNicknameState('닉네임');
     setTwitterIdState('@twitterID');
     setSelectionsState(buildInitialSelections());
@@ -811,9 +812,14 @@ function drawOptionRow(ctx, row, y) {
                     </div>
                   ))}
 
-                  {GAMES.map((game) => (
+                  {GAMES.map((game, idx) => (
                     <Fragment key={game.key}>
-                      <div style={{ fontSize: '13px', color: '#c0c0c0', textAlign: 'right' }}>{game.title}</div>
+                      {idx > 0 && idx % 5 === 0 && (
+                        <>
+                          <div style={{ gridColumn: '1 / -1', height: '1px', backgroundColor: '#404040', margin: '8px 0' }}></div>
+                        </>
+                      )}
+                      <div style={{ fontSize: '13px', color: '#c0c0c0', textAlign: 'right', paddingRight: '16px' }}>{game.title}</div>
                       {GAME_STATES.map((state) => (
                         <div key={state} style={{ textAlign: 'center' }}>
                           <input
