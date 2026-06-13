@@ -26,7 +26,7 @@ const LAYOUT = {
   startY: 430,
   rowGap: 65,
   titleX: 140,
-  contentX: 337.7061,
+  contentX: 300,
 };
 
 const FONT = {
@@ -53,7 +53,7 @@ const COLORS = {
 };
 
 const SPOILER = {
-  labelX: 1220,
+  labelX: 1180,
   barX1: 1365,
   barX2: 1810,
   barY: 330,
@@ -103,7 +103,7 @@ const GAME_STATE_GROUPS = [
 ];
 
 const GAME_SECTION = {
-  x: 1220,
+  x: 1180,
   y: 450,
   rowGap: 80,
   badgeGap: 10,
@@ -113,7 +113,6 @@ const GAME_SECTION = {
 
 const HORIZONTAL_SCALE = 0.95;
 
-// 이모지 이미지 캐시 (한 번 불러온 건 재사용)
 const emojiImageCache = {};
 
 function getEmojiImage(url, onLoad) {
@@ -135,6 +134,7 @@ function buildInitialSelections() {
       init[row.key] = '';
     }
   });
+  init['spoilerOther'] = '';
   return init;
 }
 
@@ -143,10 +143,11 @@ export default function Home() {
   const bgImageRef = useRef(null);
   const [bgLoaded, setBgLoaded] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
-  const [nickname, setNickname] = useState('빤수맨');
+  const [nickname, setNickname] = useState('닉네임');
   const [twitterId, setTwitterId] = useState('@example');
   const [selections, setSelections] = useState(buildInitialSelections);
-  const [spoilerValue, setSpoilerValue] = useState(50);
+  const [spoilerValue, setSpoilerValue] = useState(0);
+  const [spoilerOther, setSpoilerOther] = useState('');
   const [gameStates, setGameStates] = useState(() => {
     const init = {};
     GAMES.forEach((g) => {
@@ -173,7 +174,7 @@ export default function Home() {
 
   useEffect(() => {
     draw();
-  }, [nickname, twitterId, selections, spoilerValue, gameStates, bgLoaded, accentColor]);
+  }, [nickname, twitterId, selections, spoilerValue, spoilerOther, gameStates, bgLoaded, accentColor]);
 
   function applyTextStyle(ctx, font) {
     ctx.font = `${font.weight} ${font.size}pt Pretendard`;
@@ -190,8 +191,6 @@ export default function Home() {
     ctx.restore();
   }
 
-  // 텍스트 안의 이모지를 Twemoji 이미지로 바꿔서 그림
-  // ctx.font / fillStyle은 이 함수 호출 전에 미리 설정해두어야 함
   function fillTextWithEmoji(ctx, text, x, y, fontSizePx, scaleX = HORIZONTAL_SCALE) {
     const emojis = parse(text, {
       assetType: 'png',
@@ -279,14 +278,14 @@ export default function Home() {
   }
 
   function drawOptionRow(ctx, row, y) {
+    const selected = row.options.filter((opt) => selections[row.key].includes(opt));
+    if (selected.length === 0) return false;
+
     ctx.fillStyle = COLORS.text;
     applyTextStyle(ctx, FONT.title);
     fillTextCompressed(ctx, row.title, LAYOUT.titleX, y);
 
     const otherText = selections[row.key + 'Other'] || '';
-    const selected = row.options.filter((opt) => selections[row.key].includes(opt));
-    if (selected.length === 0) return;
-
     const { height, sizePx } = measureBadge(ctx, '');
     const badgeTop = y - height / 2 - sizePx * 0.35;
 
@@ -294,7 +293,7 @@ export default function Home() {
     selected.forEach((opt) => {
       if (opt === '기타') {
         if (otherText.trim() === '') return;
-        const text = `기타: ${otherText}`;
+        const text = `${otherText}`;
         ctx.fillStyle = COLORS.text;
         applyTextStyle(ctx, FONT.badge);
         fillTextWithEmoji(ctx, text, x, y, sizePx);
@@ -306,15 +305,18 @@ export default function Home() {
     });
 
     ctx.fillStyle = COLORS.text;
+    return true;
   }
 
   function drawFreeTextRow(ctx, row, y) {
+    const text = selections[row.key] || '';
+    if (!text.trim()) return false;
+
     ctx.fillStyle = COLORS.text;
     applyTextStyle(ctx, FONT.title);
     fillTextCompressed(ctx, row.title, LAYOUT.titleX, y);
 
     applyTextStyle(ctx, FONT.content);
-    const text = selections[row.key] || '';
     const fontSizePx = FONT.content.size * (96 / 72);
 
     if (row.multiline) {
@@ -325,6 +327,8 @@ export default function Home() {
     } else {
       fillTextWithEmoji(ctx, text, LAYOUT.contentX, y, fontSizePx);
     }
+
+    return true;
   }
 
   function drawSpoiler(ctx) {
@@ -355,10 +359,20 @@ export default function Home() {
     fillTextCompressed(ctx, '약', barX1, labelY);
     fillTextCompressed(ctx, '중', midX - 12, labelY);
     fillTextCompressed(ctx, '강', barX2 - 24, labelY);
+
+if (spoilerOther.trim()) {
+      ctx.fillStyle = COLORS.text;
+      const spoilerOtherSize = 14;
+      ctx.font = `${FONT.content.weight} ${spoilerOtherSize}pt Pretendard`;
+      ctx.fontKerning = 'normal';
+      const sizePx = spoilerOtherSize * (96 / 72);
+      ctx.letterSpacing = `${(FONT.content.tracking / 1000) * sizePx}px`;
+      fillTextWithEmoji(ctx, spoilerOther, barX1, barY + 52, sizePx);
+    }
   }
 
-  function drawGameGroups(ctx) {
-    let y = GAME_SECTION.y;
+  function drawGameGroups(ctx, startY = GAME_SECTION.y) {
+    let y = startY;
 
     GAME_STATE_GROUPS.forEach((group) => {
       const games = GAMES.filter((g) => gameStates[g.key] === group.state);
@@ -410,18 +424,77 @@ export default function Home() {
     applyTextStyle(ctx, FONT.content);
     fillTextCompressed(ctx, twitterId, FONT.nickname.x + nicknameWidth + 20, FONT.nickname.y);
 
-    ROWS.forEach((row, index) => {
-      const y = LAYOUT.startY + index * LAYOUT.rowGap;
+    // 동적으로 y값 계산하면서 선택된 항목만 그리기
+    let currentY = LAYOUT.startY;
+    ROWS.forEach((row) => {
       if (row.type === 'option') {
-        drawOptionRow(ctx, row, y);
+        const wasDrawn = drawOptionRow(ctx, row, currentY);
+        if (wasDrawn) currentY += LAYOUT.rowGap;
       } else {
-        drawFreeTextRow(ctx, row, y);
+        const wasDrawn = drawFreeTextRow(ctx, row, currentY);
+        if (wasDrawn) currentY += LAYOUT.rowGap;
       }
     });
 
-    drawSpoiler(ctx);
-    drawGameGroups(ctx);
+// 스포일러 0%가 아니면만 그리기
+    if (spoilerValue > 0) {
+      drawSpoiler(ctx);
+    }
+
+    // 스포일러 값에 따라 게임 섹션의 y값 동적으로 조정
+    // 스포일러가 0%면 위로 올라가기 (약 100px 정도 올림)
+    const gameStartY = spoilerValue > 0 ? GAME_SECTION.y : (GAME_SECTION.y - 100);
+    drawGameGroups(ctx, gameStartY);
+
   }
+
+  function handleDownloadImage() {
+    const canvas = canvasRef.current;
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'friend-card.png';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  const cardStyle = {
+    backgroundColor: '#2a2a2a',
+    border: '1px solid #404040',
+    borderRadius: '8px',
+    padding: '20px',
+    marginBottom: '16px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+  };
+
+  const labelStyle = {
+    color: '#e0e0e0',
+    fontSize: '14px',
+  };
+
+  const inputStyle = {
+    backgroundColor: '#1a1a1a',
+    color: '#e0e0e0',
+    border: '1px solid #404040',
+    borderRadius: '4px',
+    padding: '8px 12px',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+  };
+
+  const buttonStyle = {
+    backgroundColor: accentColor,
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '10px 16px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'opacity 0.2s',
+  };
 
   return (
     <>
@@ -432,153 +505,242 @@ export default function Home() {
         />
       </Head>
 
-      <div style={{ maxWidth: 1920, margin: '0 auto' }}>
-        <canvas
-          ref={canvasRef}
-          width={1920}
-          height={1080}
-          style={{
-            display: 'block',
-            width: '100%',
-            height: 'auto',
-            border: '1px solid black',
-          }}
-        />
-
-        <div style={{ padding: 20 }}>
-          <p style={{ margin: '0 0 4px', fontWeight: 'bold' }}>배경</p>
-          {BACKGROUNDS.map((bg, i) => (
-            <label key={bg.file} style={{ marginRight: 12 }}>
-              <input
-                type="radio"
-                name="background"
-                checked={bgIndex === i}
-                onChange={() => setBgIndex(i)}
-              />
-              {' ' + bg.label}
-            </label>
-          ))}
-        </div>
-
-        <div style={{ padding: '0 20px 20px' }}>
-          <label>닉네임: </label>
-          <input
-            type="text"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-          />
-          <label style={{ marginLeft: 16 }}>트위터 아이디: </label>
-          <input
-            type="text"
-            value={twitterId}
-            onChange={(e) => setTwitterId(e.target.value)}
-          />
-        </div>
-
-        {ROWS.map((row) =>
-          row.type === 'option' ? (
-            <div key={row.key} style={{ padding: '0 20px 12px' }}>
-              <p style={{ margin: '0 0 4px', fontWeight: 'bold' }}>{row.title}</p>
-              {row.options.map((option) => {
-                const isRadio = row.radioOptions && row.radioOptions.includes(option);
-                return (
-                  <label key={option} style={{ marginRight: 12 }}>
-                    <input
-                      type={isRadio ? 'radio' : 'checkbox'}
-                      name={isRadio ? `${row.key}-radio` : undefined}
-                      checked={selections[row.key].includes(option)}
-                      onChange={() => toggleOption(row, option)}
-                    />
-                    {' ' + option}
-                  </label>
-                );
-              })}
-              {row.options.includes('기타') && selections[row.key].includes('기타') && (
-                <input
-                  type="text"
-                  placeholder="기타 내용 입력"
-                  value={selections[row.key + 'Other']}
-                  onChange={(e) => setFieldText(row.key + 'Other', e.target.value)}
-                  style={{ marginLeft: 8 }}
-                />
-              )}
-            </div>
-          ) : (
-            <div key={row.key} style={{ padding: '0 20px 12px' }}>
-              <label style={{ fontWeight: 'bold' }}>{row.title}: </label>
-              {row.multiline ? (
-                <textarea
-                  value={selections[row.key]}
-                  onChange={(e) => setFieldText(row.key, e.target.value)}
-                  rows={3}
-                  style={{ width: 300, verticalAlign: 'top' }}
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={selections[row.key]}
-                  onChange={(e) => setFieldText(row.key, e.target.value)}
-                />
-              )}
-            </div>
-          )
-        )}
-
-        <div style={{ padding: '0 20px 12px' }}>
-          <label style={{ fontWeight: 'bold' }}>스포일러: </label>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={spoilerValue}
-            onChange={(e) => setSpoilerValue(Number(e.target.value))}
-          />
-          <input
-            type="number"
-            min="0"
-            max="100"
-            value={spoilerValue}
-            onChange={(e) => {
-              const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-              setSpoilerValue(v);
-            }}
-            style={{ width: 60, marginLeft: 8 }}
-          />
-          <span> %</span>
-        </div>
-
-        <div style={{ padding: '0 20px 12px' }}>
-          <p style={{ fontWeight: 'bold' }}>게임 체크리스트 (기본값: 대기)</p>
-          <div
+      <div style={{ backgroundColor: '#0f0f0f', minHeight: '100vh', color: '#e0e0e0' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px' }}>
+          <canvas
+            ref={canvasRef}
+            width={1920}
+            height={1080}
             style={{
-              display: 'grid',
-              gridTemplateColumns: '160px 60px 60px 60px 60px',
-              gap: '4px 4px',
-              alignItems: 'center',
+              display: 'block',
+              width: '100%',
+              height: 'auto',
+              maxWidth: '960px',
+              border: '2px solid #404040',
+              borderRadius: '8px',
+              marginBottom: '24px',
+              backgroundColor: '#1a1a1a',
             }}
-          >
-            <div></div>
-            {GAME_STATES.map((state) => (
-              <div key={state} style={{ fontWeight: 'bold', textAlign: 'center', fontSize: 13 }}>
-                {GAME_STATE_LABELS[state]}
-              </div>
-            ))}
+          />
 
-            {GAMES.map((game) => (
-              <Fragment key={game.key}>
-                <div>{game.title}</div>
-                {GAME_STATES.map((state) => (
-                  <div key={state} style={{ textAlign: 'center' }}>
+          <div style={{ maxWidth: 600, margin: '0 auto' }}>
+            <div style={cardStyle}>
+              <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '600', color: '#ffffff' }}>배경 선택</h2>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                {BACKGROUNDS.map((bg, i) => (
+                  <label key={bg.file} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                     <input
                       type="radio"
-                      name={`game-${game.key}`}
-                      checked={gameStates[game.key] === state}
-                      onChange={() => setGameState(game.key, state)}
+                      name="background"
+                      checked={bgIndex === i}
+                      onChange={() => setBgIndex(i)}
+                      style={{ cursor: 'pointer' }}
                     />
-                  </div>
+                    <span style={labelStyle}>{bg.label}</span>
+                  </label>
                 ))}
-              </Fragment>
-            ))}
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '600', color: '#ffffff' }}>기본 정보</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ ...labelStyle, display: 'block', marginBottom: '6px' }}>닉네임</label>
+                  <input
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, display: 'block', marginBottom: '6px' }}>트위터 아이디</label>
+                  <input
+                    type="text"
+                    value={twitterId}
+                    onChange={(e) => setTwitterId(e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {ROWS.map((row) => {
+              if (row.type === 'option') {
+                const selected = selections[row.key];
+
+                return (
+                  <div key={row.key} style={cardStyle}>
+                    <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '600', color: '#ffffff' }}>
+                      {row.title}
+                    </h3>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                      {row.options.map((option) => {
+                        const isRadio = row.radioOptions && row.radioOptions.includes(option);
+                        return (
+                          <label key={option} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type={isRadio ? 'radio' : 'checkbox'}
+                              name={isRadio ? `${row.key}-radio` : undefined}
+                              checked={selections[row.key].includes(option)}
+                              onChange={() => toggleOption(row, option)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <span style={labelStyle}>{option}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {row.options.includes('기타') && selections[row.key].includes('기타') && (
+                      <input
+                        type="text"
+                        placeholder="기타 내용 입력"
+                        value={selections[row.key + 'Other']}
+                        onChange={(e) => setFieldText(row.key + 'Other', e.target.value)}
+                        style={{ ...inputStyle, marginTop: '12px', width: '100%', maxWidth: '300px' }}
+                      />
+                    )}
+                  </div>
+                );
+              } else {
+                return (
+                  <div key={row.key} style={cardStyle}>
+                    <label style={{ ...labelStyle, display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                      {row.title}
+                    </label>
+                    {row.multiline ? (
+                      <textarea
+                        value={selections[row.key]}
+                        onChange={(e) => setFieldText(row.key, e.target.value)}
+                        rows={3}
+                        style={{ ...inputStyle, width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={selections[row.key]}
+                        onChange={(e) => setFieldText(row.key, e.target.value)}
+                        style={{ ...inputStyle, width: '100%' }}
+                      />
+                    )}
+                  </div>
+                );
+              }
+            })}
+
+            <div style={cardStyle}>
+              <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '600', color: '#ffffff' }}>스포일러</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={spoilerValue}
+                  onChange={(e) => setSpoilerValue(Number(e.target.value))}
+                  style={{ flex: 1, height: '6px', borderRadius: '3px', cursor: 'pointer' }}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={spoilerValue}
+                  onChange={(e) => {
+                    const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                    setSpoilerValue(v);
+                  }}
+                  style={{ ...inputStyle, width: '70px', textAlign: 'center' }}
+                />
+                <span style={labelStyle}>%</span>
+              </div>
+              <input
+                type="text"
+                placeholder="추가 내용 (선택사항)"
+                value={spoilerOther}
+                onChange={(e) => setSpoilerOther(e.target.value)}
+                style={{ ...inputStyle, width: '100%' }}
+              />
+            </div>
+
+            <div style={cardStyle}>
+              <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '600', color: '#ffffff' }}>게임 체크리스트</h2>
+              <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#a0a0a0' }}>기본값: 대기</p>
+              <div style={{ overflowX: 'auto' }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '160px 60px 60px 60px 60px',
+                    gap: '4px 4px',
+                    alignItems: 'center',
+                    minWidth: 'fit-content',
+                  }}
+                >
+                  <div></div>
+                  {GAME_STATES.map((state) => (
+                    <div key={state} style={{ fontWeight: '600', textAlign: 'center', fontSize: '12px', color: '#b0b0b0' }}>
+                      {GAME_STATE_LABELS[state]}
+                    </div>
+                  ))}
+
+                  {GAMES.map((game) => (
+                    <Fragment key={game.key}>
+                      <div style={{ fontSize: '13px', color: '#c0c0c0' }}>{game.title}</div>
+                      {GAME_STATES.map((state) => (
+                        <div key={state} style={{ textAlign: 'center' }}>
+                          <input
+                            type="radio"
+                            name={`game-${game.key}`}
+                            checked={gameStates[game.key] === state}
+                            onChange={() => setGameState(game.key, state)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </div>
+                      ))}
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={handleDownloadImage}
+                onMouseEnter={(e) => (e.target.style.opacity = '0.8')}
+                onMouseLeave={(e) => (e.target.style.opacity = '1')}
+                style={{ ...buttonStyle, marginTop: '16px', width: '100%' }}
+              >
+                이미지로 저장하기
+              </button>
+            </div>
+
+            <div style={{ textAlign: 'center', paddingBottom: '40px' }}></div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          borderTop: '1px solid #404040',
+          marginTop: '40px',
+          paddingTop: '24px',
+          paddingBottom: '40px',
+          textAlign: 'center',
+          color: '#808080',
+          fontSize: '12px',
+        }}>
+          <div style={{ marginBottom: '8px' }}>
+            사이즈 제작: 빤수맨{' '}
+            <a href="https://twitter.com/ppansuman" target="_blank" rel="noopener noreferrer" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
+              @ppansuman
+            </a>
+          </div>
+          <div style={{ marginBottom: '8px' }}>
+            이용 문의:{' '}
+            <a href="mailto:example@gmail.com" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
+              example@gmail.com
+            </a>
+          </div>
+          <div>
+            <a href="https://github.com/ppansuman" target="_blank" rel="noopener noreferrer" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
+              github.com/ppansuman
+            </a>
           </div>
         </div>
       </div>
