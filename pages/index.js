@@ -917,30 +917,37 @@ function drawOptionRow(ctx, row, y) {
 
         {/* Footer */}
         <div style={{
-          borderTop: '1px solid #404040',
+          borderTop: '1px solid #282828',
           marginTop: '40px',
           paddingTop: '24px',
           paddingBottom: '40px',
           textAlign: 'center',
           color: '#808080',
+          backgroundColor: '#141414',
           fontSize: '12px',
         }}>
-          <div style={{ marginBottom: '8px' }}>
-            사이트 제작: 빤수맨 X:{' '}
-            <a href="https://twitter.com/ppansuman" target="_blank" rel="noopener noreferrer" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
-              @ppansuman
+          <div style={{ color: '#a0a0a0', marginBottom: '12px' }}>
+            <a href="https://twitter.com/ppansuman" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+              사이트 제작: 빤수맨 X: @ppansuman
+            </a>
+            {' | '}
+            <a href="mailto:ppansuman@gmail.com" style={{textDecoration: 'none' }}>
+              이용 문의 및 건의사항: ppansuman@gmail.com
+            </a>
+            {' | '}
+            <a href="https://github.com/ppansuman" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+              GitHub
             </a>
           </div>
-          <div style={{ marginBottom: '8px' }}>
-            이용 문의:{' '}
-            <a href="mailto:ppansuman@gmail.com" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
-              ppansuman@gmail.com
-            </a>
-          </div>
-          <div>
-            <a href="https://github.com/ppansuman" target="_blank" rel="noopener noreferrer" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
-              github.com/ppansuman
-            </a>
+          <div style={{ paddingTop: '12px', fontSize: '11px', color: '#606060', lineHeight: '1.0' }}>
+            <div style={{ marginBottom: '8px' }}>
+              용과 같이(Like a Dragon) 시리즈는 RGG Studio / SEGA의 상표입니다. © RGG Studio/SEGA. All rights reserved.
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              본 사이트는 개인 개발 팬 사이트로써 RGG Studio / SEGA와 관련이 없습니다.
+            </div>
+            <div style={{ paddingTop: '12px' }}>
+              v0.3.1 · Last Updated: 2026.06.13</div>
           </div>
         </div>
       </div>
