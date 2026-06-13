@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, Fragment } from 'react';
 import Head from 'next/head';
 import { parse } from 'twemoji-parser';
+import { version } from '../package.json';
 
 const TWIT_STYLE_OPTIONS = ['RT', '마음', '탐라대화', '인용', '일상', '수위', '타장르', '기타'];
 const MAIN_FOCUS_OPTIONS = ['글', '썰', '번역', '그림', '코스', '인형', '공예', '영상', '녹음', '소비', '구독', '기타'];
@@ -952,7 +953,7 @@ function drawOptionRow(ctx, row, y) {
               본 사이트는 개인 개발 팬 사이트로써 RGG Studio / SEGA와 관련이 없습니다.
             </div>
             <div style={{ paddingTop: '12px' }}>
-              v0.3.2 · Last Updated: 2026.06.13</div>
+              v{version} · Last Updated: 2026.06.13</div>
           </div>
         </div>
       </div>
