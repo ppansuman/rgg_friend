@@ -1,5 +1,5 @@
 # 용스튜 트친소표 생성기
-![Version](https://img.shields.io/badge/version-v0.1.0-blue)
+![Version](https://img.shields.io/badge/version-v0.2.0-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 트친소표를 보다 편리하게 제작하고 공유하기 위해 만들어진 웹 기반 생성기입니다.
@@ -16,17 +16,11 @@ https://rgg-friend.vercel.app/
 별도의 이미지 편집 프로그램 없이 원하는 정보를 입력하고 트친소표를 생성할 수 있습니다.
 
 
-
-**이미지 저장하기**
-
-- 모바일: 이미지를 꾹 눌러 저장
-- PC: 이미지 오른쪽 클릭 후 다른이름으로 저장
-
 ---
 
 ## 개발 상태
 
-현재 프로토타입 버전(v0.1.0)으로 운영 중입니다.
+현재 프로토타입 버전(v0.2.0)으로 운영 중입니다.
 
 기능 개선 및 UI 업데이트는 제작자의 일정에 맞춰 순차적으로 진행됩니다.
 
@@ -41,6 +35,17 @@ https://rgg-friend.vercel.app/
 ---
 
 ## 업데이트 내역
+
+### v0.2.0 · 2026.06.13
+
+- UI개선
+- 스포일러 0%일 때 스포일러 UI숨김
+- 스포일러 하단 기타 기입란 추가
+- 스포일러 0%일 때 게임 체크리스트 위치 동적 조정
+- 체크 없는 항목 숨김
+- 이미지 내보내기 버튼 추가
+- footer 정보 수정
+- localStorage 저장
 
 ### v0.1.0 · 2026.06.13
 
