@@ -638,7 +638,9 @@ function drawOptionRow(ctx, row, y) {
 
   return (
     <>
-      <Head>
+       <Head>
+        <title>용스튜 트친소/소개표 생성기</title>
+        <link rel="icon" href="/favicon.ico" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
