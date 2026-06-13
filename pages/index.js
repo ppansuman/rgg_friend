@@ -448,13 +448,25 @@ if (spoilerOther.trim()) {
 
   }
 
-  function handleDownloadImage() {
+function handleDownloadImage() {
     const canvas = canvasRef.current;
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'friend-card.png';
+      
+      // 현재 날짜, 시간 포맷
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      
+      const fileName = `rgg-friend-card_${year}${month}${day}_${hours}${minutes}${seconds}.png`;
+      a.download = fileName;
+      
       a.click();
       URL.revokeObjectURL(url);
     });
@@ -726,7 +738,7 @@ if (spoilerOther.trim()) {
           fontSize: '12px',
         }}>
           <div style={{ marginBottom: '8px' }}>
-            사이즈 제작: 빤수맨{' '}
+            사이트 제작: 빤수맨 X:{' '}
             <a href="https://twitter.com/ppansuman" target="_blank" rel="noopener noreferrer" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
               @ppansuman
             </a>
@@ -734,7 +746,7 @@ if (spoilerOther.trim()) {
           <div style={{ marginBottom: '8px' }}>
             이용 문의:{' '}
             <a href="mailto:example@gmail.com" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
-              example@gmail.com
+              ppansuman@gmail.com
             </a>
           </div>
           <div>
