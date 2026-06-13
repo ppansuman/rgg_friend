@@ -1,5 +1,5 @@
 # 용스튜 트친소/소개표 생성기
-![Version](https://img.shields.io/badge/version-v0.3.0-blue)
+![Version](https://img.shields.io/badge/version-v0.3.1-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 트친소표를 보다 편리하게 제작하고 공유하기 위해 만들어진 웹 기반 생성기입니다.
@@ -28,6 +28,9 @@ https://rgg-friend.vercel.app/
 ---
 
 ## 업데이트 내역
+
+### v0.3.1 · 2026.06.13
+- 카드 타입 및 배경 선택 로컬 저장 안되는 오류 수정
 
 ### v0.3.0 · 2026.06.13
 - UI개선
