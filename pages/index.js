@@ -644,7 +644,7 @@ function drawOptionRow(ctx, row, y) {
         />
       </Head>
 
-      <div style={{ backgroundColor: '#0f0f0f', minHeight: '100vh', color: '#e0e0e0' }}>
+      <div style={{ backgroundColor: '#151515', minHeight: '100vh', color: '#e0e0e0' }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px' }}>
           <canvas
             ref={canvasRef}
@@ -923,7 +923,7 @@ function drawOptionRow(ctx, row, y) {
           paddingBottom: '40px',
           textAlign: 'center',
           color: '#808080',
-          backgroundColor: '#141414',
+          backgroundColor: '#181818',
           fontSize: '12px',
         }}>
           <div style={{ color: '#a0a0a0', marginBottom: '12px' }}>
