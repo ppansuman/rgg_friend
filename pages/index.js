@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { parse } from 'twemoji-parser';
 
 const TWIT_STYLE_OPTIONS = ['RT', '마음', '탐라대화', '인용', '일상', '수위', '타장르', '기타'];
-const MAIN_FOCUS_OPTIONS = ['글&썰', '그림', '코스', '인형/공예', '번역', '소비', '구독', '기타'];
+const MAIN_FOCUS_OPTIONS = ['글', '썰', '번역', '그림', '코스', '인형', '공예', '영상', '녹음', '소비', '구독', '기타'];
 const COUPLE_OPTIONS = ['HL', 'BL', 'GL', 'NCP/페어', 'ALL', '드림', '기타'];
 const FUB_FREE_OPTIONS = ['OK', 'X', '기타'];
 const BREAKUP_OPTIONS = ['언팔', '블락', '블언블', '기타'];
@@ -38,10 +38,14 @@ const FONT = {
 };
 
 const BACKGROUNDS = [
-  { file: 'BG_2026_tojo.png', label: '동성회', accent: '#dc737c' },
-  { file: 'BG_2026_omi.png', label: '오미연합', accent: '#c9a227' },
-  { file: 'BG_2026_keisatsu.png', label: '경찰', accent: '#4a7fd6' },
-  { file: 'BG_2026_bengoshi.png', label: '변호사', accent: '#4a9d6f' },
+  { file: 'BG_2026_tojo.png', label: '동성회', accent: '#db7d7d', type: '트친소' },
+  { file: 'BG_2026_omi.png', label: '오미연합', accent: '#cab366', type: '트친소' },
+  { file: 'BG_2026_keisatsu.png', label: '경찰', accent: '#6ca3e1', type: '트친소' },
+  { file: 'BG_2026_bengoshi.png', label: '변호사', accent: '#8ac2a3', type: '트친소' },
+  { file: 'BG_2026_tojo2.png', label: '동성회', accent: '#db7d7d', type: '소개표' },
+  { file: 'BG_2026_omi2.png', label: '오미연합', accent: '#cab366', type: '소개표' },
+  { file: 'BG_2026_keisatsu2.png', label: '경찰', accent: '#6ca3e1', type: '소개표' },
+  { file: 'BG_2026_bengoshi2.png', label: '변호사', accent: '#8ac2a3', type: '소개표' },
 ];
 
 const COLORS = {
@@ -142,53 +146,43 @@ export default function Home() {
   const canvasRef = useRef(null);
   const bgImageRef = useRef(null);
   const [bgLoaded, setBgLoaded] = useState(false);
-  const [bgIndex, setBgIndex] = useState(0);
-  
-  // localStorage에서 값 불러오기
-  const [nickname, setNicknameState] = useState(() => {
-    if (typeof window === 'undefined') return '빤수맨';
-    const saved = localStorage.getItem('rgg_nickname');
-    return saved || '빤수맨';
-  });
+  const [cardType, setCardType] = useState('트친소');
+  const [selectedBgLabel, setSelectedBgLabel] = useState('동성회'); // 배경 이름만 저장
 
-  const [twitterId, setTwitterIdState] = useState(() => {
-    if (typeof window === 'undefined') return '@example';
-    const saved = localStorage.getItem('rgg_twitterId');
-    return saved || '@example';
-  });
-
-  const [selections, setSelectionsState] = useState(() => {
-    if (typeof window === 'undefined') return buildInitialSelections();
-    const saved = localStorage.getItem('rgg_selections');
-    return saved ? JSON.parse(saved) : buildInitialSelections();
-  });
-
-  const [spoilerValue, setSpoilerValueState] = useState(() => {
-    if (typeof window === 'undefined') return 50;
-    const saved = localStorage.getItem('rgg_spoilerValue');
-    return saved ? Number(saved) : 50;
-  });
-
-  const [spoilerOther, setSpoilerOtherState] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    const saved = localStorage.getItem('rgg_spoilerOther');
-    return saved || '';
-  });
-
+  // 현재 배경 파일 결정
+  const currentBg = BACKGROUNDS.find(bg => bg.type === cardType && bg.label === selectedBgLabel);
+  const bgIndex = BACKGROUNDS.indexOf(currentBg);
+  const [nickname, setNicknameState] = useState('닉네임');
+  const [twitterId, setTwitterIdState] = useState('@twitterID');
+  const [selections, setSelectionsState] = useState(buildInitialSelections);
+  const [spoilerValue, setSpoilerValueState] = useState(0);
+  const [spoilerOther, setSpoilerOtherState] = useState('');
   const [gameStates, setGameStatesState] = useState(() => {
-    if (typeof window === 'undefined') {
-      const init = {};
-      GAMES.forEach((g) => { init[g.key] = '대기'; });
-      return init;
-    }
-    const saved = localStorage.getItem('rgg_gameStates');
-    if (saved) return JSON.parse(saved);
     const init = {};
     GAMES.forEach((g) => { init[g.key] = '대기'; });
     return init;
   });
 
-  // localStorage 저장 함수들
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const saved = {
+      nickname: localStorage.getItem('rgg_nickname'),
+      twitterId: localStorage.getItem('rgg_twitterId'),
+      selections: localStorage.getItem('rgg_selections'),
+      spoilerValue: localStorage.getItem('rgg_spoilerValue'),
+      spoilerOther: localStorage.getItem('rgg_spoilerOther'),
+      gameStates: localStorage.getItem('rgg_gameStates'),
+    };
+    
+    if (saved.nickname) setNicknameState(saved.nickname);
+    if (saved.twitterId) setTwitterIdState(saved.twitterId);
+    if (saved.selections) setSelectionsState(JSON.parse(saved.selections));
+    if (saved.spoilerValue) setSpoilerValueState(Number(saved.spoilerValue));
+    if (saved.spoilerOther) setSpoilerOtherState(saved.spoilerOther);
+    if (saved.gameStates) setGameStatesState(JSON.parse(saved.gameStates));
+  }, []);
+
   const setNickname = (value) => {
     setNicknameState(value);
     if (typeof window !== 'undefined') {
@@ -353,8 +347,7 @@ export default function Home() {
 
     return { width, height };
   }
-
-  function drawOptionRow(ctx, row, y) {
+function drawOptionRow(ctx, row, y) {
     const selected = row.options.filter((opt) => selections[row.key].includes(opt));
     if (selected.length === 0) return false;
 
@@ -370,10 +363,10 @@ export default function Home() {
     selected.forEach((opt) => {
       if (opt === '기타') {
         if (otherText.trim() === '') return;
-        const text = `기타: ${otherText}`;
+        const text = otherText;
         ctx.fillStyle = COLORS.text;
-        applyTextStyle(ctx, FONT.badge);
-        fillTextWithEmoji(ctx, text, x, y, sizePx);
+        applyTextStyle(ctx, FONT.content);
+        fillTextWithEmoji(ctx, text, x, y, FONT.content.size * (96 / 72));
         x += ctx.measureText(text).width * HORIZONTAL_SCALE + GAME_SECTION.badgeGap;
       } else {
         const { width } = drawBadge(ctx, opt, x, badgeTop, accentColor, COLORS.badgeText);
@@ -502,6 +495,7 @@ export default function Home() {
     fillTextCompressed(ctx, twitterId, FONT.nickname.x + nicknameWidth + 20, FONT.nickname.y);
 
     let currentY = LAYOUT.startY;
+    
     ROWS.forEach((row) => {
       if (row.type === 'option') {
         const wasDrawn = drawOptionRow(ctx, row, currentY);
@@ -516,7 +510,7 @@ export default function Home() {
       drawSpoiler(ctx);
     }
 
-    const gameStartY = spoilerValue > 0 ? GAME_SECTION.y : (GAME_SECTION.y - 150);
+    const gameStartY = spoilerValue > 0 ? GAME_SECTION.y : (GAME_SECTION.y - 100);
     drawGameGroups(ctx, gameStartY);
   }
 
@@ -535,12 +529,32 @@ export default function Home() {
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
 
-      const fileName = `rgg-friend_${year}${month}${day}_${hours}${minutes}${seconds}.png`;
+      const fileName = `friend-card_${year}${month}${day}_${hours}${minutes}${seconds}.png`;
       a.download = fileName;
 
       a.click();
       URL.revokeObjectURL(url);
     });
+  }
+  
+  function handleResetAll() {
+    setNicknameState('닉네임');
+    setTwitterIdState('@twitterID');
+    setSelectionsState(buildInitialSelections());
+    setSpoilerValueState(0);
+    setSpoilerOtherState('');
+    const init = {};
+    GAMES.forEach((g) => { init[g.key] = '대기'; });
+    setGameStatesState(init);
+    
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('rgg_nickname');
+      localStorage.removeItem('rgg_twitterId');
+      localStorage.removeItem('rgg_selections');
+      localStorage.removeItem('rgg_spoilerValue');
+      localStorage.removeItem('rgg_spoilerOther');
+      localStorage.removeItem('rgg_gameStates');
+    }
   }
 
   const cardStyle = {
@@ -608,18 +622,45 @@ export default function Home() {
 
           <div style={{ maxWidth: 600, margin: '0 auto' }}>
             <div style={cardStyle}>
+              <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '600', color: '#ffffff' }}>카드 타입</h2>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="cardType"
+                    checked={cardType === '트친소'}
+                    onChange={() => setCardType('트친소')}
+                    style={{ cursor: 'pointer' }}
+                    suppressHydrationWarning
+                  />
+                  <span style={labelStyle}>트친소</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="cardType"
+                    checked={cardType === '소개표'}
+                    onChange={() => setCardType('소개표')}
+                    style={{ cursor: 'pointer' }}
+                    suppressHydrationWarning
+                  />
+                  <span style={labelStyle}>소개표</span>
+                </label>
+              </div>
+
               <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '600', color: '#ffffff' }}>배경 선택</h2>
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                {BACKGROUNDS.map((bg, i) => (
-                  <label key={bg.file} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                {['동성회', '오미연합', '경찰', '변호사'].map((label) => (
+                  <label key={label} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="background"
-                      checked={bgIndex === i}
-                      onChange={() => setBgIndex(i)}
+                      checked={selectedBgLabel === label}
+                      onChange={() => setSelectedBgLabel(label)}
                       style={{ cursor: 'pointer' }}
+                      suppressHydrationWarning
                     />
-                    <span style={labelStyle}>{bg.label}</span>
+                    <span style={labelStyle}>{label}</span>
                   </label>
                 ))}
               </div>
@@ -634,6 +675,7 @@ export default function Home() {
                     type="text"
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
+                    suppressHydrationWarning
                     style={inputStyle}
                   />
                 </div>
@@ -643,6 +685,7 @@ export default function Home() {
                     type="text"
                     value={twitterId}
                     onChange={(e) => setTwitterId(e.target.value)}
+                    suppressHydrationWarning
                     style={inputStyle}
                   />
                 </div>
@@ -651,8 +694,6 @@ export default function Home() {
 
             {ROWS.map((row) => {
               if (row.type === 'option') {
-                const selected = selections[row.key];
-
                 return (
                   <div key={row.key} style={cardStyle}>
                     <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '600', color: '#ffffff' }}>
@@ -669,6 +710,7 @@ export default function Home() {
                               checked={selections[row.key].includes(option)}
                               onChange={() => toggleOption(row, option)}
                               style={{ cursor: 'pointer' }}
+                              suppressHydrationWarning
                             />
                             <span style={labelStyle}>{option}</span>
                           </label>
@@ -681,6 +723,7 @@ export default function Home() {
                         placeholder="기타 내용 입력"
                         value={selections[row.key + 'Other']}
                         onChange={(e) => setFieldText(row.key + 'Other', e.target.value)}
+                        suppressHydrationWarning
                         style={{ ...inputStyle, marginTop: '12px', width: '100%', maxWidth: '300px' }}
                       />
                     )}
@@ -697,6 +740,7 @@ export default function Home() {
                         value={selections[row.key]}
                         onChange={(e) => setFieldText(row.key, e.target.value)}
                         rows={3}
+                        suppressHydrationWarning
                         style={{ ...inputStyle, width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
                       />
                     ) : (
@@ -704,6 +748,7 @@ export default function Home() {
                         type="text"
                         value={selections[row.key]}
                         onChange={(e) => setFieldText(row.key, e.target.value)}
+                        suppressHydrationWarning
                         style={{ ...inputStyle, width: '100%' }}
                       />
                     )}
@@ -721,6 +766,7 @@ export default function Home() {
                   max="100"
                   value={spoilerValue}
                   onChange={(e) => setSpoilerValue(Number(e.target.value))}
+                  suppressHydrationWarning
                   style={{ flex: 1, height: '6px', borderRadius: '3px', cursor: 'pointer' }}
                 />
                 <input
@@ -732,6 +778,7 @@ export default function Home() {
                     const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
                     setSpoilerValue(v);
                   }}
+                  suppressHydrationWarning
                   style={{ ...inputStyle, width: '70px', textAlign: 'center' }}
                 />
                 <span style={labelStyle}>%</span>
@@ -741,21 +788,20 @@ export default function Home() {
                 placeholder="추가 내용 (선택사항)"
                 value={spoilerOther}
                 onChange={(e) => setSpoilerOther(e.target.value)}
+                suppressHydrationWarning
                 style={{ ...inputStyle, width: '100%' }}
               />
             </div>
 
             <div style={cardStyle}>
               <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '600', color: '#ffffff' }}>게임 체크리스트</h2>
-              <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#a0a0a0' }}>기본값: 대기</p>
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-start', overflowX: 'auto', paddingLeft: '40px' }}>
                 <div
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '160px 60px 60px 60px 60px',
                     gap: '4px 4px',
                     alignItems: 'center',
-                    minWidth: 'fit-content',
                   }}
                 >
                   <div></div>
@@ -767,7 +813,7 @@ export default function Home() {
 
                   {GAMES.map((game) => (
                     <Fragment key={game.key}>
-                      <div style={{ fontSize: '13px', color: '#c0c0c0' }}>{game.title}</div>
+                      <div style={{ fontSize: '13px', color: '#c0c0c0', textAlign: 'right' }}>{game.title}</div>
                       {GAME_STATES.map((state) => (
                         <div key={state} style={{ textAlign: 'center' }}>
                           <input
@@ -776,6 +822,7 @@ export default function Home() {
                             checked={gameStates[game.key] === state}
                             onChange={() => setGameState(game.key, state)}
                             style={{ cursor: 'pointer' }}
+                            suppressHydrationWarning
                           />
                         </div>
                       ))}
@@ -792,9 +839,32 @@ export default function Home() {
               >
                 이미지로 저장하기
               </button>
+
+              <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                <button
+                  onClick={handleResetAll}
+                  onMouseEnter={(e) => (e.target.style.opacity = '0.7')}
+                  onMouseLeave={(e) => (e.target.style.opacity = '0.5')}
+                  style={{ 
+                    width: '120px',
+                    backgroundColor: '#505050',
+                    color: '#a0a0a0',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    opacity: '0.5',
+                    transition: 'opacity 0.2s',
+                  }}
+                >
+                  모든 설정 해제하기
+                </button>
+              </div>
             </div>
 
-            <div style={{ textAlign: 'center', paddingBottom: '40px' }}></div>
+            <div style={{ textAlign: 'center'}}></div>
           </div>
         </div>
 
@@ -821,8 +891,8 @@ export default function Home() {
             </a>
           </div>
           <div>
-            <a href="https://github.com/ppansuman/rgg_friend" target="_blank" rel="noopener noreferrer" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
-              GitHub: ppansuman
+            <a href="https://github.com/ppansuman" target="_blank" rel="noopener noreferrer" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
+              github.com/ppansuman
             </a>
           </div>
         </div>
