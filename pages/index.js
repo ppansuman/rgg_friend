@@ -157,10 +157,18 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    
+    // cardType 먼저 로드
     const savedCardType = localStorage.getItem('rgg_cardType');
-    if (savedCardType) setCardTypeState(savedCardType);
+    if (savedCardType) {
+      setCardTypeState(savedCardType);
+    }
+    
+    // 그 다음 bgLabel 로드
     const savedBgLabel = localStorage.getItem('rgg_selectedBgLabel');
-    if (savedBgLabel) setSelectedBgLabelState(savedBgLabel);
+    if (savedBgLabel) {
+      setSelectedBgLabelState(savedBgLabel);
+    }
   }, []);
   
   const [selectedBgLabel, setSelectedBgLabelState] = useState('동성회');
