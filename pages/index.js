@@ -939,6 +939,11 @@ function drawOptionRow(ctx, row, y) {
               GitHub
             </a>
           </div>
+
+          <div style={{ marginBottom: '12px', fontSize: '12px', color: '#707070' }}>
+            마지마코 / 이시오다 / 하루카를 그려주시면 제작자가 기뻐합니다...💕
+          </div>
+
           <div style={{ paddingTop: '12px', fontSize: '11px', color: '#606060', lineHeight: '1.0' }}>
             <div style={{ marginBottom: '8px' }}>
               용과 같이(Like a Dragon) 시리즈는 RGG Studio / SEGA의 상표입니다. © RGG Studio/SEGA. All rights reserved.
@@ -947,7 +952,7 @@ function drawOptionRow(ctx, row, y) {
               본 사이트는 개인 개발 팬 사이트로써 RGG Studio / SEGA와 관련이 없습니다.
             </div>
             <div style={{ paddingTop: '12px' }}>
-              v0.3.1 · Last Updated: 2026.06.13</div>
+              v0.3.2 · Last Updated: 2026.06.13</div>
           </div>
         </div>
       </div>
