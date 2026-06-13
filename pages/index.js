@@ -26,7 +26,7 @@ const LAYOUT = {
   startY: 430,
   rowGap: 65,
   titleX: 140,
-  contentX: 300,
+  contentX: 337.7061,
 };
 
 const FONT = {
@@ -53,7 +53,7 @@ const COLORS = {
 };
 
 const SPOILER = {
-  labelX: 1180,
+  labelX: 1220,
   barX1: 1365,
   barX2: 1810,
   barY: 330,
@@ -103,7 +103,7 @@ const GAME_STATE_GROUPS = [
 ];
 
 const GAME_SECTION = {
-  x: 1180,
+  x: 1220,
   y: 450,
   rowGap: 80,
   badgeGap: 10,
@@ -143,18 +143,95 @@ export default function Home() {
   const bgImageRef = useRef(null);
   const [bgLoaded, setBgLoaded] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
-  const [nickname, setNickname] = useState('닉네임');
-  const [twitterId, setTwitterId] = useState('@example');
-  const [selections, setSelections] = useState(buildInitialSelections);
-  const [spoilerValue, setSpoilerValue] = useState(0);
-  const [spoilerOther, setSpoilerOther] = useState('');
-  const [gameStates, setGameStates] = useState(() => {
+  
+  // localStorage에서 값 불러오기
+  const [nickname, setNicknameState] = useState(() => {
+    if (typeof window === 'undefined') return '빤수맨';
+    const saved = localStorage.getItem('rgg_nickname');
+    return saved || '빤수맨';
+  });
+
+  const [twitterId, setTwitterIdState] = useState(() => {
+    if (typeof window === 'undefined') return '@example';
+    const saved = localStorage.getItem('rgg_twitterId');
+    return saved || '@example';
+  });
+
+  const [selections, setSelectionsState] = useState(() => {
+    if (typeof window === 'undefined') return buildInitialSelections();
+    const saved = localStorage.getItem('rgg_selections');
+    return saved ? JSON.parse(saved) : buildInitialSelections();
+  });
+
+  const [spoilerValue, setSpoilerValueState] = useState(() => {
+    if (typeof window === 'undefined') return 50;
+    const saved = localStorage.getItem('rgg_spoilerValue');
+    return saved ? Number(saved) : 50;
+  });
+
+  const [spoilerOther, setSpoilerOtherState] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const saved = localStorage.getItem('rgg_spoilerOther');
+    return saved || '';
+  });
+
+  const [gameStates, setGameStatesState] = useState(() => {
+    if (typeof window === 'undefined') {
+      const init = {};
+      GAMES.forEach((g) => { init[g.key] = '대기'; });
+      return init;
+    }
+    const saved = localStorage.getItem('rgg_gameStates');
+    if (saved) return JSON.parse(saved);
     const init = {};
-    GAMES.forEach((g) => {
-      init[g.key] = '대기';
-    });
+    GAMES.forEach((g) => { init[g.key] = '대기'; });
     return init;
   });
+
+  // localStorage 저장 함수들
+  const setNickname = (value) => {
+    setNicknameState(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rgg_nickname', value);
+    }
+  };
+
+  const setTwitterId = (value) => {
+    setTwitterIdState(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rgg_twitterId', value);
+    }
+  };
+
+  const setSelections = (value) => {
+    const newValue = typeof value === 'function' ? value(selections) : value;
+    setSelectionsState(newValue);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rgg_selections', JSON.stringify(newValue));
+    }
+  };
+
+  const setSpoilerValue = (value) => {
+    setSpoilerValueState(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rgg_spoilerValue', String(value));
+    }
+  };
+
+  const setSpoilerOther = (value) => {
+    setSpoilerOtherState(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rgg_spoilerOther', value);
+    }
+  };
+
+  const setGameStates = (value) => {
+    const newValue = typeof value === 'function' ? value(gameStates) : value;
+    setGameStatesState(newValue);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rgg_gameStates', JSON.stringify(newValue));
+    }
+  };
 
   const accentColor = BACKGROUNDS[bgIndex].accent;
 
@@ -293,7 +370,7 @@ export default function Home() {
     selected.forEach((opt) => {
       if (opt === '기타') {
         if (otherText.trim() === '') return;
-        const text = `${otherText}`;
+        const text = `기타: ${otherText}`;
         ctx.fillStyle = COLORS.text;
         applyTextStyle(ctx, FONT.badge);
         fillTextWithEmoji(ctx, text, x, y, sizePx);
@@ -360,14 +437,14 @@ export default function Home() {
     fillTextCompressed(ctx, '중', midX - 12, labelY);
     fillTextCompressed(ctx, '강', barX2 - 24, labelY);
 
-if (spoilerOther.trim()) {
+    if (spoilerOther.trim()) {
       ctx.fillStyle = COLORS.text;
-      const spoilerOtherSize = 14;
+      const spoilerOtherSize = 16;
       ctx.font = `${FONT.content.weight} ${spoilerOtherSize}pt Pretendard`;
       ctx.fontKerning = 'normal';
       const sizePx = spoilerOtherSize * (96 / 72);
       ctx.letterSpacing = `${(FONT.content.tracking / 1000) * sizePx}px`;
-      fillTextWithEmoji(ctx, spoilerOther, barX1, barY + 52, sizePx);
+      fillTextWithEmoji(ctx, spoilerOther, barX1, barY + 50, sizePx);
     }
   }
 
@@ -424,7 +501,6 @@ if (spoilerOther.trim()) {
     applyTextStyle(ctx, FONT.content);
     fillTextCompressed(ctx, twitterId, FONT.nickname.x + nicknameWidth + 20, FONT.nickname.y);
 
-    // 동적으로 y값 계산하면서 선택된 항목만 그리기
     let currentY = LAYOUT.startY;
     ROWS.forEach((row) => {
       if (row.type === 'option') {
@@ -436,26 +512,21 @@ if (spoilerOther.trim()) {
       }
     });
 
-// 스포일러 0%가 아니면만 그리기
     if (spoilerValue > 0) {
       drawSpoiler(ctx);
     }
 
-    // 스포일러 값에 따라 게임 섹션의 y값 동적으로 조정
-    // 스포일러가 0%면 위로 올라가기 (약 100px 정도 올림)
-    const gameStartY = spoilerValue > 0 ? GAME_SECTION.y : (GAME_SECTION.y - 100);
+    const gameStartY = spoilerValue > 0 ? GAME_SECTION.y : (GAME_SECTION.y - 150);
     drawGameGroups(ctx, gameStartY);
-
   }
 
-function handleDownloadImage() {
+  function handleDownloadImage() {
     const canvas = canvasRef.current;
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      
-      // 현재 날짜, 시간 포맷
+
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -463,10 +534,10 @@ function handleDownloadImage() {
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
-      
-      const fileName = `rgg-friend-card_${year}${month}${day}_${hours}${minutes}${seconds}.png`;
+
+      const fileName = `rgg-friend_${year}${month}${day}_${hours}${minutes}${seconds}.png`;
       a.download = fileName;
-      
+
       a.click();
       URL.revokeObjectURL(url);
     });
@@ -745,13 +816,13 @@ function handleDownloadImage() {
           </div>
           <div style={{ marginBottom: '8px' }}>
             이용 문의:{' '}
-            <a href="mailto:example@gmail.com" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
+            <a href="mailto:ppansuman@gmail.com" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
               ppansuman@gmail.com
             </a>
           </div>
           <div>
-            <a href="https://github.com/ppansuman" target="_blank" rel="noopener noreferrer" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
-              github.com/ppansuman
+            <a href="https://github.com/ppansuman/rgg_friend" target="_blank" rel="noopener noreferrer" style={{ color: '#a0a0a0', textDecoration: 'none' }}>
+              GitHub: ppansuman
             </a>
           </div>
         </div>
