@@ -146,8 +146,37 @@ export default function Home() {
   const canvasRef = useRef(null);
   const bgImageRef = useRef(null);
   const [bgLoaded, setBgLoaded] = useState(false);
-  const [cardType, setCardType] = useState('트친소');
-  const [selectedBgLabel, setSelectedBgLabel] = useState('동성회'); // 배경 이름만 저장
+  const [cardType, setCardTypeState] = useState('트친소');
+
+  const setCardType = (value) => {
+    setCardTypeState(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rgg_cardType', value);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedCardType = localStorage.getItem('rgg_cardType');
+    if (savedCardType) setCardTypeState(savedCardType);
+    const savedBgLabel = localStorage.getItem('rgg_selectedBgLabel');
+    if (savedBgLabel) setSelectedBgLabelState(savedBgLabel);
+  }, []);
+  
+  const [selectedBgLabel, setSelectedBgLabelState] = useState('동성회');
+
+  const setSelectedBgLabel = (value) => {
+    setSelectedBgLabelState(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rgg_selectedBgLabel', value);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('rgg_selectedBgLabel');
+    if (saved) setSelectedBgLabelState(saved);
+  }, []);
 
   // 현재 배경 파일 결정
   const currentBg = BACKGROUNDS.find(bg => bg.type === cardType && bg.label === selectedBgLabel);
@@ -539,6 +568,8 @@ function drawOptionRow(ctx, row, y) {
   
   function handleResetAll() {
     if (!window.confirm('모든 설정을 삭제하시겠습니까?')) return;
+    setCardTypeState('트친소');
+    setSelectedBgLabelState('동성회');
     setNicknameState('닉네임');
     setTwitterIdState('@twitterID');
     setSelectionsState(buildInitialSelections());
@@ -549,6 +580,8 @@ function drawOptionRow(ctx, row, y) {
     setGameStatesState(init);
     
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('rgg_cardType');
+      localStorage.removeItem('rgg_selectedBgLabel');
       localStorage.removeItem('rgg_nickname');
       localStorage.removeItem('rgg_twitterId');
       localStorage.removeItem('rgg_selections');
