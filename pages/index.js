@@ -47,7 +47,7 @@ function buildInitialSelections() {
     if (row.type === 'option') {
       init[row.key] = [];
       init[row.key + 'Other'] = '';
-    } else {
+    } else if (row.type === 'free') {
       init[row.key] = '';
     }
   });
@@ -99,8 +99,28 @@ export default function Home() {
 
   const currentBg = BACKGROUNDS.find(bg => bg.type === cardType && bg.label === selectedBgLabel);
   const bgIndex = BACKGROUNDS.indexOf(currentBg);
-  const [nickname, setNicknameState] = useState('닉네임');
-  const [twitterId, setTwitterIdState] = useState('@twitterID');
+  const [nickname, setNicknameState] = useState('');
+  const [twitterId, setTwitterIdState] = useState('');
+  const [fubFree, setFubFreeState] = useState(false);
+  const [customTitle, setCustomTitleState] = useState('');
+  const [customValue, setCustomValueState] = useState('');
+
+  const setFubFree = (value) => {
+    setFubFreeState(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rgg_fubFree', String(value));
+    }
+  };
+
+  const setCustomTitle = (value) => {
+    setCustomTitleState(value);
+    if (typeof window !== 'undefined') localStorage.setItem('rgg_customTitle', value);
+  };
+
+  const setCustomValue = (value) => {
+    setCustomValueState(value);
+    if (typeof window !== 'undefined') localStorage.setItem('rgg_customValue', value);
+  };
   const [selections, setSelectionsState] = useState(buildInitialSelections);
   const [spoilerValue, setSpoilerValueState] = useState(0);
   const [spoilerOther, setSpoilerOtherState] = useState('');
@@ -116,6 +136,9 @@ export default function Home() {
     const saved = {
       nickname: localStorage.getItem('rgg_nickname'),
       twitterId: localStorage.getItem('rgg_twitterId'),
+      fubFree: localStorage.getItem('rgg_fubFree'),
+      customTitle: localStorage.getItem('rgg_customTitle'),
+      customValue: localStorage.getItem('rgg_customValue'),
       selections: localStorage.getItem('rgg_selections'),
       spoilerValue: localStorage.getItem('rgg_spoilerValue'),
       spoilerOther: localStorage.getItem('rgg_spoilerOther'),
@@ -124,6 +147,9 @@ export default function Home() {
 
     if (saved.nickname) setNicknameState(saved.nickname);
     if (saved.twitterId) setTwitterIdState(saved.twitterId);
+    if (saved.fubFree) setFubFreeState(saved.fubFree === 'true');
+    if (saved.customTitle) setCustomTitleState(saved.customTitle);
+    if (saved.customValue) setCustomValueState(saved.customValue);
     if (saved.selections) setSelectionsState(JSON.parse(saved.selections));
     if (saved.spoilerValue) setSpoilerValueState(Number(saved.spoilerValue));
     if (saved.spoilerOther) setSpoilerOtherState(saved.spoilerOther);
@@ -192,7 +218,7 @@ export default function Home() {
 
   useEffect(() => {
     draw();
-  }, [nickname, twitterId, selections, spoilerValue, spoilerOther, gameStates, bgLoaded, accentColor]);
+  }, [nickname, twitterId, selections, spoilerValue, spoilerOther, gameStates, bgLoaded, accentColor, fubFree, customTitle, customValue]);
 
   function applyTextStyle(ctx, font) {
     ctx.font = `${font.weight} ${font.size}pt Pretendard`;
@@ -295,7 +321,9 @@ export default function Home() {
     return { width, height };
   }
   function drawOptionRow(ctx, row, y) {
-    const selected = selections[row.key].filter((opt) => row.options.includes(opt));
+    const selected = selections[row.key]
+      .filter((opt) => row.options.includes(opt))
+      .sort((a, b) => a === '기타' ? 1 : b === '기타' ? -1 : 0);
     if (selected.length === 0) return false;
 
     ctx.fillStyle = COLORS.text;
@@ -318,6 +346,11 @@ export default function Home() {
           applyTextStyle(ctx, FONT.content);
           fillTextWithEmoji(ctx, text, x, y + LAYOUT.contentOffsetY, FONT.content.size * (96 / 72));
           x += ctx.measureText(text).width * HORIZONTAL_SCALE + GAME_SECTION.badgeGap;
+        } else if (row.otherInline || (row.otherInlineAuto && selected.filter(o => o !== '기타').length <= 3)) {
+          applyTextStyle(ctx, FONT.other);
+          const otherSizePx = FONT.other.size * (96 / 72);
+          fillTextWithEmoji(ctx, text, x, y + LAYOUT.contentOffsetY, otherSizePx);
+          x += ctx.measureText(text).width * HORIZONTAL_SCALE + GAME_SECTION.badgeGap;
         } else {
           ctx.font = `${FONT.other.weight} ${FONT.other.size}pt Pretendard`;
           ctx.fontKerning = 'normal';
@@ -332,7 +365,8 @@ export default function Home() {
     });
 
     ctx.fillStyle = COLORS.text;
-    const hasBadgeAndOther = !hasOtherOnly && selected.includes('기타') && otherText.trim();
+    const isInline = row.otherInline || (row.otherInlineAuto && selected.filter(o => o !== '기타').length <= 3);
+    const hasBadgeAndOther = !hasOtherOnly && !isInline && selected.includes('기타') && otherText.trim();
     return { drawn: true, extraGap: hasBadgeAndOther ? LAYOUT.otherWithBadgeRowGap : 0 };
   }
 
@@ -467,8 +501,17 @@ export default function Home() {
     fillTextCompressed(ctx, nickname, FONT.nickname.x, FONT.nickname.y);
 
     const nicknameWidth = ctx.measureText(nickname).width * HORIZONTAL_SCALE;
-    applyTextStyle(ctx, FONT.content);
+    ctx.font = `${FONT.twitterId.weight} ${FONT.twitterId.size}pt ${FONT.twitterId.family}`;
+    ctx.fontVariationSettings = `"opsz" ${FONT.twitterId.opsz}`;
+    ctx.fontKerning = 'normal';
+    const twitterIdSizePx = FONT.twitterId.size * (96 / 72);
+    ctx.letterSpacing = `${(FONT.twitterId.tracking / 1000) * twitterIdSizePx}px`;
     fillTextCompressed(ctx, twitterId, FONT.nickname.x + nicknameWidth + 20, FONT.nickname.y);
+    if (fubFree) {
+      const idWidth = ctx.measureText(twitterId).width * HORIZONTAL_SCALE;
+      const badgeX = FONT.nickname.x + nicknameWidth + 20 + idWidth + 16;
+      drawBadge(ctx, 'FUB FREE', badgeX, FONT.nickname.y - FONT.twitterId.size * (96 / 72) * 0.8, accentColor, COLORS.badgeText);
+    }
 
     let currentY = LAYOUT.startY;
 
@@ -476,6 +519,15 @@ export default function Home() {
       if (row.type === 'option') {
         const result = drawOptionRow(ctx, row, currentY);
         if (result?.drawn) currentY += LAYOUT.rowGap + result.extraGap;
+      } else if (row.type === 'custom') {
+        if (customTitle.trim() && customValue.trim()) {
+          ctx.fillStyle = COLORS.text;
+          applyTextStyle(ctx, FONT.title);
+          fillTextCompressed(ctx, customTitle, LAYOUT.titleX, currentY);
+          applyTextStyle(ctx, FONT.content);
+          fillTextWithEmoji(ctx, customValue, LAYOUT.contentX, currentY + LAYOUT.contentOffsetY, FONT.content.size * (96 / 72));
+          currentY += LAYOUT.rowGap;
+        }
       } else {
         const wasDrawn = drawFreeTextRow(ctx, row, currentY);
         if (wasDrawn) currentY += LAYOUT.rowGap;
@@ -529,8 +581,8 @@ export default function Home() {
 
     setCardTypeState('트친소');
     setSelectedBgLabelState('동성회');
-    setNicknameState('닉네임');
-    setTwitterIdState('@twitterID');
+    setNicknameState('');
+    setTwitterIdState('');
     setSelectionsState(buildInitialSelections());
     setSpoilerValueState(0);
     setSpoilerOtherState('');
@@ -543,6 +595,12 @@ export default function Home() {
       localStorage.removeItem('rgg_selectedBgLabel');
       localStorage.removeItem('rgg_nickname');
       localStorage.removeItem('rgg_twitterId');
+      setFubFreeState(false);
+      localStorage.removeItem('rgg_fubFree');
+      setCustomTitleState('');
+      setCustomValueState('');
+      localStorage.removeItem('rgg_customTitle');
+      localStorage.removeItem('rgg_customValue');
       localStorage.removeItem('rgg_selections');
       localStorage.removeItem('rgg_spoilerValue');
       localStorage.removeItem('rgg_spoilerOther');
@@ -582,6 +640,7 @@ export default function Home() {
         <title>용스튜 트친소/소개표 생성기</title>
         <link rel="icon" href="/favicon.ico" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400&display=swap" />
       </Head>
 
       <div style={{ backgroundColor: '#151515', minHeight: '100vh', color: '#e0e0e0' }}>
@@ -615,11 +674,14 @@ export default function Home() {
           <div style={{ maxWidth: 540, margin: '0 auto' }}>
 
             <div style={{ ...cardStyle, backgroundColor: 'rgba(42, 42, 42, 0.3)', border: '1px solid rgba(64, 64, 64, 0.8)', boxShadow: 'none', padding: '12px 16px', marginBottom: '24px' }}>
-              <p style={guideStyle}>
-                TIP1: 체크한 항목 순서대로 표시됩니다.
+              <p style={{ ...guideStyle, color: '#ffffff' }}  >
+                <b>TIP1: 체크한 항목 순서대로 표시됩니다.</b>
               </p>
-              <p style={guideStyle}>
-                TIP2: 체크하지 않은 섹션은 이미지에 표시되지 않습니다.
+              <p style={{ ...guideStyle, color: '#ffffff' }}  >
+                <b>TIP2: 체크하지 않은 섹션은 이미지에 표시되지 않습니다.</b>
+              </p>
+              <p style={{ ...guideStyle, color: '#ffffff' }}  >
+                <b>TIP3: 모든 내용은 로컬에 자동으로 저장됩니다.</b>
               </p>
               <p style={{ ...guideStyle, paddingTop: 8 }}>
                 PC와 모바일 모두 구글 크롬을 기준으로 제작되었으며,
@@ -630,7 +692,7 @@ export default function Home() {
               <p style={{ ...guideStyle, paddingTop: 8 }}>
                 오류나 건의 제보: <b>#용스튜소개표_제보</b> 또는 하단 메일 주소로 제보
               </p>
-              <p style={{ ...guideStyle}}>
+              <p style={{ ...guideStyle }}>
                 공지사항 및 업데이트 내역은 하단 GitHub 링크의 Readme 참고
               </p>
             </div>
@@ -699,12 +761,24 @@ export default function Home() {
                     type="text"
                     value={twitterId}
                     onChange={(e) => setTwitterId(e.target.value)}
+                    placeholder="@yourIDhere"
                     suppressHydrationWarning
                     style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
                   />
                 </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={fubFree}
+                    onChange={(e) => setFubFree(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                    suppressHydrationWarning
+                  />
+                  <span style={labelStyle}>FUB FREE</span>
+                </label>
               </div>
             </div>
+
 
             {ROWS.map((row) => {
               if (row.type === 'option') {
@@ -741,6 +815,28 @@ export default function Home() {
                         style={{ ...inputStyle, marginTop: '12px', width: '100%', width: '100%' }}
                       />
                     )}
+                  </div>
+                );
+              } else if (row.type === 'custom') {
+                return (
+                  <div key={row.key} style={cardStyle}>
+                    <h3 style={h3Style}>자유 기입 항목(선택)</h3>
+                    <input
+                      type="text"
+                      placeholder="제목 입력"
+                      value={customTitle}
+                      onChange={(e) => setCustomTitle(e.target.value)}
+                      suppressHydrationWarning
+                      style={{ ...inputStyle, width: '30%', marginBottom: '8px', fontWeight: '600' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="내용 입력"
+                      value={customValue}
+                      onChange={(e) => setCustomValue(e.target.value)}
+                      suppressHydrationWarning
+                      style={{ ...inputStyle, width: '100%' }}
+                    />
                   </div>
                 );
               } else {
@@ -813,7 +909,7 @@ export default function Home() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '120px 45px 45px 45px 45px',
+                    gridTemplateColumns: '134px 45px 45px 45px 45px',
                     gap: '4px 4px',
                     alignItems: 'center',
                   }}
