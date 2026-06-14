@@ -324,7 +324,6 @@ export default function Home() {
           const otherSizePx = FONT.other.size * (96 / 72);
           ctx.letterSpacing = `${(FONT.other.tracking / 1000) * otherSizePx}px`;
           fillTextWithEmoji(ctx, text, LAYOUT.contentX, y + LAYOUT.otherWithBadgeOffsetY, otherSizePx);
-          x += ctx.measureText(text).width * HORIZONTAL_SCALE + GAME_SECTION.badgeGap;
         }
       } else {
         const { width } = drawBadge(ctx, opt, x, badgeTop, accentColor, COLORS.badgeText);
