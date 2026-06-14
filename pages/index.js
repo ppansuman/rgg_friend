@@ -384,7 +384,7 @@ export default function Home() {
       ctx.fontKerning = 'normal';
       const sizePx = spoilerOtherSize * (96 / 72);
       ctx.letterSpacing = `${(FONT.content.tracking / 1000) * sizePx}px`;
-      fillTextWithEmoji(ctx, spoilerOther, barX1, barY + 62, sizePx);
+      fillTextWithEmoji(ctx, spoilerOther, barX1, barY + SPOILER.otherTextOffsetY, sizePx);
     }
   }
 
@@ -457,7 +457,9 @@ export default function Home() {
       drawSpoiler(ctx);
     }
 
-    const gameStartY = spoilerValue > 0 ? GAME_SECTION.y : (GAME_SECTION.y - 100);
+    const gameStartY = spoilerValue > 0
+  ? GAME_SECTION.yWithSpoiler + (spoilerOther.trim() ? SPOILER.otherOffsetY : SPOILER.gameOffsetY)
+  : GAME_SECTION.y;
     drawGameGroups(ctx, gameStartY);
   }
 
@@ -695,7 +697,7 @@ export default function Home() {
                         value={selections[row.key + 'Other']}
                         onChange={(e) => setFieldText(row.key + 'Other', e.target.value)}
                         suppressHydrationWarning
-                        style={{ ...inputStyle, marginTop: '12px', width: '100%', maxWidth: '300px' }}
+                        style={{ ...inputStyle, marginTop: '12px', width: '100%', width: '100%' }}
                       />
                     )}
                   </div>
