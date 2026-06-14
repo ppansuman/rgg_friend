@@ -295,7 +295,7 @@ export default function Home() {
     return { width, height };
   }
   function drawOptionRow(ctx, row, y) {
-    const selected = row.options.filter((opt) => selections[row.key].includes(opt));
+    const selected = selections[row.key].filter((opt) => row.options.includes(opt));
     if (selected.length === 0) return false;
 
     ctx.fillStyle = COLORS.text;
@@ -304,17 +304,28 @@ export default function Home() {
 
     const otherText = selections[row.key + 'Other'] || '';
     const { height, sizePx } = measureBadge(ctx, '');
-    const badgeTop = y - height / 2 - sizePx * 0.35;
+    const badgeTop = y + LAYOUT.contentOffsetY - height / 2 - sizePx * 0.35;
 
     let x = LAYOUT.contentX;
+    const hasOtherOnly = selected.length === 1 && selected[0] === '기타';
+
     selected.forEach((opt) => {
       if (opt === '기타') {
         if (otherText.trim() === '') return;
         const text = otherText;
         ctx.fillStyle = COLORS.text;
-        applyTextStyle(ctx, FONT.content);
-        fillTextWithEmoji(ctx, text, x, y, FONT.content.size * (96 / 72));
-        x += ctx.measureText(text).width * HORIZONTAL_SCALE + GAME_SECTION.badgeGap;
+        if (hasOtherOnly) {
+          applyTextStyle(ctx, FONT.content);
+          fillTextWithEmoji(ctx, text, x, y + LAYOUT.contentOffsetY, FONT.content.size * (96 / 72));
+          x += ctx.measureText(text).width * HORIZONTAL_SCALE + GAME_SECTION.badgeGap;
+        } else {
+          ctx.font = `${FONT.other.weight} ${FONT.other.size}pt Pretendard`;
+          ctx.fontKerning = 'normal';
+          const otherSizePx = FONT.other.size * (96 / 72);
+          ctx.letterSpacing = `${(FONT.other.tracking / 1000) * otherSizePx}px`;
+          fillTextWithEmoji(ctx, text, LAYOUT.contentX, y + LAYOUT.otherWithBadgeOffsetY, otherSizePx);
+          x += ctx.measureText(text).width * HORIZONTAL_SCALE + GAME_SECTION.badgeGap;
+        }
       } else {
         const { width } = drawBadge(ctx, opt, x, badgeTop, accentColor, COLORS.badgeText);
         x += width + GAME_SECTION.badgeGap;
@@ -322,7 +333,8 @@ export default function Home() {
     });
 
     ctx.fillStyle = COLORS.text;
-    return true;
+    const hasBadgeAndOther = !hasOtherOnly && selected.includes('기타') && otherText.trim();
+    return { drawn: true, extraGap: hasBadgeAndOther ? LAYOUT.otherWithBadgeRowGap : 0 };
   }
 
   function drawFreeTextRow(ctx, row, y) {
@@ -338,11 +350,29 @@ export default function Home() {
 
     if (row.multiline) {
       const lineHeight = fontSizePx * 1.3;
-      text.split('\n').forEach((line, i) => {
-        fillTextWithEmoji(ctx, line, LAYOUT.contentX, y + i * lineHeight, fontSizePx);
+      const maxWidth = LAYOUT.maxContentWidth; // constants에 추가
+      let lineIndex = 0;
+
+      text.split('\n').forEach((paragraph) => {
+        const words = paragraph.split('');
+        let currentLine = '';
+
+        words.forEach((char) => {
+          const testLine = currentLine + char;
+          const testWidth = ctx.measureText(testLine).width * HORIZONTAL_SCALE;
+          if (testWidth > maxWidth && currentLine !== '') {
+            fillTextWithEmoji(ctx, currentLine, LAYOUT.contentX, y + LAYOUT.contentOffsetY + lineIndex * lineHeight, fontSizePx);
+            currentLine = char;
+            lineIndex++;
+          } else {
+            currentLine = testLine;
+          }
+        });
+        fillTextWithEmoji(ctx, currentLine, LAYOUT.contentX, y + LAYOUT.contentOffsetY + lineIndex * lineHeight, fontSizePx);
+        lineIndex++;
       });
     } else {
-      fillTextWithEmoji(ctx, text, LAYOUT.contentX, y, fontSizePx);
+      fillTextWithEmoji(ctx, text, LAYOUT.contentX, y + LAYOUT.contentOffsetY, fontSizePx);
     }
 
     return true;
@@ -379,11 +409,10 @@ export default function Home() {
 
     if (spoilerOther.trim()) {
       ctx.fillStyle = COLORS.text;
-      const spoilerOtherSize = 18;
-      ctx.font = `${FONT.content.weight} ${spoilerOtherSize}pt Pretendard`;
+      ctx.font = `${FONT.other.weight} ${FONT.other.size}pt Pretendard`;
       ctx.fontKerning = 'normal';
-      const sizePx = spoilerOtherSize * (96 / 72);
-      ctx.letterSpacing = `${(FONT.content.tracking / 1000) * sizePx}px`;
+      const sizePx = FONT.other.size * (96 / 72);
+      ctx.letterSpacing = `${(FONT.other.tracking / 1000) * sizePx}px`;
       fillTextWithEmoji(ctx, spoilerOther, barX1, barY + SPOILER.otherTextOffsetY, sizePx);
     }
   }
@@ -392,6 +421,7 @@ export default function Home() {
     let y = startY;
 
     GAME_STATE_GROUPS.forEach((group) => {
+      if (group.state === '대기') return;
       const games = GAMES.filter((g) => gameStates[g.key] === group.state);
       if (games.length === 0) return;
 
@@ -445,8 +475,8 @@ export default function Home() {
 
     ROWS.forEach((row) => {
       if (row.type === 'option') {
-        const wasDrawn = drawOptionRow(ctx, row, currentY);
-        if (wasDrawn) currentY += LAYOUT.rowGap;
+        const result = drawOptionRow(ctx, row, currentY);
+        if (result?.drawn) currentY += LAYOUT.rowGap + result.extraGap;
       } else {
         const wasDrawn = drawFreeTextRow(ctx, row, currentY);
         if (wasDrawn) currentY += LAYOUT.rowGap;
@@ -458,8 +488,8 @@ export default function Home() {
     }
 
     const gameStartY = spoilerValue > 0
-  ? GAME_SECTION.yWithSpoiler + (spoilerOther.trim() ? SPOILER.otherOffsetY : SPOILER.gameOffsetY)
-  : GAME_SECTION.y;
+      ? GAME_SECTION.yWithSpoiler + (spoilerOther.trim() ? SPOILER.otherOffsetY : SPOILER.gameOffsetY)
+      : GAME_SECTION.y;
     drawGameGroups(ctx, gameStartY);
   }
 
@@ -547,7 +577,7 @@ export default function Home() {
   }, []);
 
   return (
-  // #endregion
+    // #endregion
     <>
       <Head>
         <title>용스튜 트친소/소개표 생성기</title>
@@ -587,10 +617,22 @@ export default function Home() {
 
             <div style={{ ...cardStyle, backgroundColor: 'rgba(42, 42, 42, 0.3)', border: '1px solid rgba(64, 64, 64, 0.8)', boxShadow: 'none', padding: '12px 16px', marginBottom: '24px' }}>
               <p style={guideStyle}>
-                TIP: 체크하지 않은 항목은 이미지에 표시되지 않습니다.
+                TIP1: 체크한 항목 순서대로 표시됩니다.
               </p>
               <p style={guideStyle}>
-                PC와 모바일 모두 구글 크롬을 기준으로 제작되었으며, X(트위터) 인앱 브라우저에서 잘 작동되지 않을 수 있습니다.
+                TIP2: 체크하지 않은 섹션은 이미지에 표시되지 않습니다.
+              </p>
+              <p style={{ ...guideStyle, paddingTop: 8 }}>
+                PC와 모바일 모두 구글 크롬을 기준으로 제작되었으며,
+              </p>
+              <p style={guideStyle}>
+                X(트위터) 인앱 브라우저에서 잘 작동되지 않을 수 있습니다.
+              </p>
+              <p style={{ ...guideStyle, paddingTop: 8 }}>
+                오류나 건의 제보: <b>#용스튜소개표_제보</b> 또는 하단 메일 주소로 제보
+              </p>
+              <p style={{ ...guideStyle}}>
+                업데이트 내역은 하단 GitHub 링크의 Readme 참고
               </p>
             </div>
 
