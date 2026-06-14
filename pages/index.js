@@ -1,9 +1,10 @@
+// #region Functions
 import { useEffect, useRef, useState, Fragment } from 'react';
 import Head from 'next/head';
 import { parse } from 'twemoji-parser';
-import { version } from '../package.json';
+import { version, lastUpdated } from '../package.json';
 
-import { 
+import {
   ROWS,
   LAYOUT,
   FONT,
@@ -69,18 +70,18 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     const savedCardType = localStorage.getItem('rgg_cardType');
     if (savedCardType) {
       setCardTypeState(savedCardType);
     }
-    
+
     const savedBgLabel = localStorage.getItem('rgg_selectedBgLabel');
     if (savedBgLabel) {
       setSelectedBgLabelState(savedBgLabel);
     }
   }, []);
-  
+
   const [selectedBgLabel, setSelectedBgLabelState] = useState('동성회');
 
   const setSelectedBgLabel = (value) => {
@@ -96,7 +97,6 @@ export default function Home() {
     if (saved) setSelectedBgLabelState(saved);
   }, []);
 
-  // 현재 배경 파일 결정
   const currentBg = BACKGROUNDS.find(bg => bg.type === cardType && bg.label === selectedBgLabel);
   const bgIndex = BACKGROUNDS.indexOf(currentBg);
   const [nickname, setNicknameState] = useState('닉네임');
@@ -112,7 +112,7 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     const saved = {
       nickname: localStorage.getItem('rgg_nickname'),
       twitterId: localStorage.getItem('rgg_twitterId'),
@@ -121,7 +121,7 @@ export default function Home() {
       spoilerOther: localStorage.getItem('rgg_spoilerOther'),
       gameStates: localStorage.getItem('rgg_gameStates'),
     };
-    
+
     if (saved.nickname) setNicknameState(saved.nickname);
     if (saved.twitterId) setTwitterIdState(saved.twitterId);
     if (saved.selections) setSelectionsState(JSON.parse(saved.selections));
@@ -294,7 +294,7 @@ export default function Home() {
 
     return { width, height };
   }
-function drawOptionRow(ctx, row, y) {
+  function drawOptionRow(ctx, row, y) {
     const selected = row.options.filter((opt) => selections[row.key].includes(opt));
     if (selected.length === 0) return false;
 
@@ -442,7 +442,7 @@ function drawOptionRow(ctx, row, y) {
     fillTextCompressed(ctx, twitterId, FONT.nickname.x + nicknameWidth + 20, FONT.nickname.y);
 
     let currentY = LAYOUT.startY;
-    
+
     ROWS.forEach((row) => {
       if (row.type === 'option') {
         const wasDrawn = drawOptionRow(ctx, row, currentY);
@@ -462,62 +462,62 @@ function drawOptionRow(ctx, row, y) {
   }
 
   function handleDownloadImage() {
-  const canvas = canvasRef.current;
-  
-  canvas.toBlob(
-    (blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
+    const canvas = canvasRef.current;
 
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
+    canvas.toBlob(
+      (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
 
-      const fileName = `friend-card_${year}${month}${day}_${hours}${minutes}${seconds}.png`;
-      a.download = fileName;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
 
-      a.click();
-      URL.revokeObjectURL(url);
-    },
-    'image/png',
-    1 // 품질
-  );
-}
-  
-  function handleResetAll() {
-  const shouldReset = typeof window !== 'undefined' 
-    ? window.confirm('모든 설정을 삭제하시겠습니까?') !== false
-    : true;
-  
-  if (!shouldReset) return;
+        const fileName = `friend-card_${year}${month}${day}_${hours}${minutes}${seconds}.png`;
+        a.download = fileName;
 
-  setCardTypeState('트친소');
-  setSelectedBgLabelState('동성회');
-  setNicknameState('닉네임');
-  setTwitterIdState('@twitterID');
-  setSelectionsState(buildInitialSelections());
-  setSpoilerValueState(0);
-  setSpoilerOtherState('');
-  const init = {};
-  GAMES.forEach((g) => { init[g.key] = '대기'; });
-  setGameStatesState(init);
-  
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('rgg_cardType');
-    localStorage.removeItem('rgg_selectedBgLabel');
-    localStorage.removeItem('rgg_nickname');
-    localStorage.removeItem('rgg_twitterId');
-    localStorage.removeItem('rgg_selections');
-    localStorage.removeItem('rgg_spoilerValue');
-    localStorage.removeItem('rgg_spoilerOther');
-    localStorage.removeItem('rgg_gameStates');
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      'image/png',
+      1 // 품질
+    );
   }
-}
+
+  function handleResetAll() {
+    const shouldReset = typeof window !== 'undefined'
+      ? window.confirm('모든 설정을 삭제하시겠습니까?') !== false
+      : true;
+
+    if (!shouldReset) return;
+
+    setCardTypeState('트친소');
+    setSelectedBgLabelState('동성회');
+    setNicknameState('닉네임');
+    setTwitterIdState('@twitterID');
+    setSelectionsState(buildInitialSelections());
+    setSpoilerValueState(0);
+    setSpoilerOtherState('');
+    const init = {};
+    GAMES.forEach((g) => { init[g.key] = '대기'; });
+    setGameStatesState(init);
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('rgg_cardType');
+      localStorage.removeItem('rgg_selectedBgLabel');
+      localStorage.removeItem('rgg_nickname');
+      localStorage.removeItem('rgg_twitterId');
+      localStorage.removeItem('rgg_selections');
+      localStorage.removeItem('rgg_spoilerValue');
+      localStorage.removeItem('rgg_spoilerOther');
+      localStorage.removeItem('rgg_gameStates');
+    }
+  }
 
   const buttonStyle = {
     backgroundColor: accentColor,
@@ -545,17 +545,15 @@ function drawOptionRow(ctx, row, y) {
   }, []);
 
   return (
+  // #endregion
     <>
-       <Head>
+      <Head>
         <title>용스튜 트친소/소개표 생성기</title>
         <link rel="icon" href="/favicon.ico" />
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
-        />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
       </Head>
 
-<div style={{ backgroundColor: '#151515', minHeight: '100vh', color: '#e0e0e0' }}>
+      <div style={{ backgroundColor: '#151515', minHeight: '100vh', color: '#e0e0e0' }}>
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10, backgroundColor: '#0f0f0f', paddingBottom: '20px', paddingTop: '20px' }}>
           <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 20px' }}>
             <canvas
@@ -575,25 +573,25 @@ function drawOptionRow(ctx, row, y) {
           </div>
         </div>
 
-        <div style={{ 
-          maxWidth: 960, 
-          margin: '0 auto', 
-          padding: '20px', 
+        <div style={{
+          maxWidth: 960,
+          margin: '0 auto',
+          padding: '20px',
           paddingTop: '40px',
           marginTop: `${canvasHeight}px`
         }}>
           {/* 폼 요소들 */}
           <div style={{ maxWidth: 540, margin: '0 auto' }}>
-            
+
             <div style={{ ...cardStyle, backgroundColor: 'rgba(42, 42, 42, 0.3)', border: '1px solid rgba(64, 64, 64, 0.8)', boxShadow: 'none', padding: '12px 16px', marginBottom: '24px' }}>
               <p style={guideStyle}>
-              TIP: 체크하지 않은 항목은 이미지에 표시되지 않습니다.
+                TIP: 체크하지 않은 항목은 이미지에 표시되지 않습니다.
               </p>
               <p style={guideStyle}>
-              모바일: 이미지로 저장하기 선택 → 이미지를 길게 눌러 저장
+                PC와 모바일 모두 구글 크롬을 기준으로 제작되었으며, X(트위터) 인앱 브라우저에서 잘 작동되지 않을 수 있습니다.
               </p>
             </div>
-            
+
             <div style={cardStyle}>
               <h2 style={h2Style}>카드 타입</h2>
               <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
@@ -768,18 +766,18 @@ function drawOptionRow(ctx, row, y) {
 
             <div style={cardStyle}>
               <h2 style={h2Style}>게임 체크리스트</h2>
-              <div style={{ display: 'flex', justifyContent: 'center', overflowX: 'auto'}}>
+              <div style={{ display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '120px 50px 50px 50px 50px',
+                    gridTemplateColumns: '120px 45px 45px 45px 45px',
                     gap: '4px 4px',
                     alignItems: 'center',
                   }}
                 >
                   <div></div>
                   {GAME_STATES.map((state) => (
-                    <div key={state} style={{ fontWeight: '600', textAlign: 'center', fontSize: '12px', color: '#b0b0b0' }}>
+                    <div key={state} style={{ fontWeight: '600', textAlign: 'center', fontSize: '10px', color: '#b0b0b0' }}>
                       {GAME_STATE_LABELS[state]}
                     </div>
                   ))}
@@ -819,32 +817,32 @@ function drawOptionRow(ctx, row, y) {
               </button>
 
 
-              </div>
             </div>
+          </div>
 
-                          <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                <button
-                  onClick={handleResetAll}
-                  onMouseEnter={(e) => (e.target.style.opacity = '0.7')}
-                  onMouseLeave={(e) => (e.target.style.opacity = '0.5')}
-                  style={{ 
-                    width: '120px',
-                    backgroundColor: '#505050',
-                    color: '#a0a0a0',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    opacity: '0.5',
-                    transition: 'opacity 0.2s',
-                  }}
-                >
-                  모든 설정 해제하기
-                </button>
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <button
+              onClick={handleResetAll}
+              onMouseEnter={(e) => (e.target.style.opacity = '0.7')}
+              onMouseLeave={(e) => (e.target.style.opacity = '0.5')}
+              style={{
+                width: '120px',
+                backgroundColor: '#505050',
+                color: '#a0a0a0',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                opacity: '0.5',
+                transition: 'opacity 0.2s',
+              }}
+            >
+              모든 설정 해제하기
+            </button>
 
-            <div style={{ textAlign: 'center'}}></div>
+            <div style={{ textAlign: 'center' }}></div>
           </div>
         </div>
 
@@ -877,18 +875,18 @@ function drawOptionRow(ctx, row, y) {
             마지마코 / 이시오다 / 하루카를 그려주시면 제작자가 기뻐합니다...💕
           </div>
 
-          <div style={footerTextStyle}>
+          <div style={{ ...footerTextStyle, padding: '0 16px' }}>
             <div style={{ marginBottom: '8px' }}>
               본 사이트는 용과 같이(Like a Dragon) 시리즈의 팬이 개인적으로 제작한 비상업적 트친소 및 소개표 생성기입니다.
             </div>
             <div style={{ marginBottom: '8px' }}>
-             RGG Studio / SEGA와 공식적인 관련이 없으며, 수익을 목적으로 하지 않습니다.
+              RGG Studio / SEGA와 공식적인 관련이 없으며, 수익을 목적으로 하지 않습니다.
             </div>
             <div style={{ marginBottom: '8px' }}>
               용과 같이 시리즈 및 관련 소재의 저작권은 © RGG Studio / SEGA에 있습니다.
             </div>
             <div style={{ paddingTop: '12px' }}>
-              v{version} · Last Updated: 2026.06.13</div>
+              v{version} · Last Updated: {lastUpdated}</div>
           </div>
         </div>
       </div>
