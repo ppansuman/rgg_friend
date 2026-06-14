@@ -631,7 +631,7 @@ export default function Home() {
                 오류나 건의 제보: <b>#용스튜소개표_제보</b> 또는 하단 메일 주소로 제보
               </p>
               <p style={{ ...guideStyle}}>
-                업데이트 내역은 하단 GitHub 링크의 Readme 참고
+                공지사항 및 업데이트 내역은 하단 GitHub 링크의 Readme 참고
               </p>
             </div>
 
