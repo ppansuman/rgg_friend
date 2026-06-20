@@ -681,7 +681,10 @@ export default function Home() {
                 <b>TIP2: 체크하지 않은 섹션은 이미지에 표시되지 않습니다.</b>
               </p>
               <p style={{ ...guideStyle, color: '#ffffff' }}  >
-                <b>TIP3: 모든 내용은 로컬에 자동으로 저장됩니다.</b>
+                <b>TIP3: 모든 내용은 기기에 자동으로 저장됩니다.</b>
+              </p>
+              <p style={{ ...guideStyle, color: '#ffffff' }}  >
+                <b>TIP4: 기능이 잘 작동하지 않으면, 브라우저 캐시 삭제 후 사용해 주세요.</b>
               </p>
               <p style={{ ...guideStyle, paddingTop: 8 }}>
                 PC와 모바일 모두 구글 크롬을 기준으로 제작되었으며,
@@ -996,17 +999,22 @@ export default function Home() {
           backgroundColor: '#181818',
           fontSize: '12px',
         }}>
-          <div style={{ color: '#a0a0a0', marginBottom: '12px' }}>
+          <div style={{ color: '#a0a0a0' }}>
             <a href="https://twitter.com/ppansuman" target="_blank" rel="noopener noreferrer" style={linkStyle}>
               사이트 제작: 빤수맨 X: @ppansuman
             </a>
-            {' | '}
+          </div>
+          <div style={{ color: '#a0a0a0', marginBottom: '12px' }}>
             <a href="mailto:ppansuman@gmail.com" style={linkStyle}>
               이용 문의 및 건의사항: ppansuman@gmail.com
             </a>
             {' | '}
             <a href="https://github.com/ppansuman/rgg_friend" target="_blank" rel="noopener noreferrer" style={linkStyle}>
               GitHub
+            </a>
+            {' | '}
+            <a href="https://x.com/ppansuman/status/1727017805470638231?s=20" target="_blank" rel="noopener noreferrer" style={linkStyle}>
+              이전 트친소표
             </a>
           </div>
 
