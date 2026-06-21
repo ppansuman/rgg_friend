@@ -73,8 +73,6 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const hasGameSection = gameGroups.length > 0;
   const hasSpoiler = spoilerValue > 0;
 
-  const isNearWhite = getLuminance(accentColor) > 230;
-  const isNearBlack = getLuminance(accentColor) < 25;
 
   const toLinear = (c) => { const s = c / 255; return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
   const getWcagText = (hexBg) => {
@@ -86,11 +84,11 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     return contrastWhite > contrastBlack ? '#ffffff' : '#222222';
   };
 
-  const badgeBgColor = isNearWhite ? '#e0e0e0' : isNearBlack ? '#444444' : accentColor;
-  const badgeBorder = isNearWhite ? '#aaaaaa' : isNearBlack ? '#666666' : accentColor;
+  const badgeBgColor =  accentColor;
+  const badgeBorder =  accentColor;
   const badgeText = badgeTextCustom
     ? badgeTextCustom
-    : isNearWhite ? '#555555' : isNearBlack ? '#cccccc' : getWcagText(badgeBgColor);
+    : getWcagText(badgeBgColor);
 
   const PreviewBadge = ({ label }) => (
     <span style={{
@@ -173,10 +171,10 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: fs(6), width: fs(160) }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: fs(8) }}>
         <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor, whiteSpace: 'nowrap' }}>스포일러</span>
-        <span style={{ fontSize: fs(14), fontWeight: '800', color: isNearWhite ? '#777777' : isNearBlack ? '#888888' : accentDark }}>{spoilerLabel}</span>
+        <span style={{ fontSize: fs(14), fontWeight: '800', color: accentDark }}>{spoilerLabel}</span>
       </div>
       <div style={{ width: '100%', height: fs(7), backgroundColor: getLuminance(bgColor) > 128 ? '#e8e8e8' : '#444444', borderRadius: '999px', overflow: 'hidden' }}>
-        <div style={{ width: `${spoilerValue}%`, height: '100%', backgroundColor: isNearWhite ? '#aaaaaa' : isNearBlack ? '#666666' : accentColor, borderRadius: '999px' }} />
+        <div style={{ width: `${spoilerValue}%`, height: '100%', backgroundColor: accentColor, borderRadius: '999px' }} />
       </div>
       {spoilerOther.trim() && (
         <div style={{ fontSize: fs(10), color: textColor, textAlign: 'right' }}>{spoilerOther}</div>
@@ -293,7 +291,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
                 </span>
               )}
 
-              <span style={{ fontSize: fs(14), color: isNearWhite ? '#777777' : isNearBlack ? '#888888' : accentDark, fontFamily: 'Inter, sans-serif', fontWeight: '400' }}>
+              <span style={{ fontSize: fs(14), color:  accentDark, fontFamily: 'Inter, sans-serif', fontWeight: '400' }}>
                 {twitterId || '@yourIDhere'}
               </span>
 
@@ -352,8 +350,6 @@ function FormPanel({
     }
   }
 
-  const isNearWhiteAccent = getLuminance(accentColor) > 230;
-  const isNearBlackAccent = getLuminance(accentColor) < 25;
 
   const [noticeOpen, setNoticeOpen] = useState(true);
 
@@ -595,7 +591,7 @@ function FormPanel({
         onClick={handleDownloadImage}
         onMouseEnter={(e) => (e.target.style.opacity = '0.8')}
         onMouseLeave={(e) => (e.target.style.opacity = '1')}
-        style={{ backgroundColor: (isNearWhiteAccent || isNearBlackAccent) ? (isNearWhiteAccent ? '#e8e8e8' : '#333333') : accentColor, color: (isNearWhiteAccent || isNearBlackAccent) ? (isNearWhiteAccent ? '#555555' : '#cccccc') : getTextOnAccent(accentColor), border: isNearWhiteAccent ? '1.5px solid #aaaaaa' : isNearBlackAccent ? '1.5px solid #666666' : 'none', borderRadius: '4px', padding: '10px 16px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', transition: 'opacity 0.2s', width: '100%', marginBottom: '12px' }}>
+        style={{ backgroundColor: accentColor, color: getTextOnAccent(accentColor), border: 'none', borderRadius: '4px', padding: '10px 16px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', transition: 'opacity 0.2s', width: '100%', marginBottom: '12px' }}>
         이미지로 저장하기
       </button>
 
