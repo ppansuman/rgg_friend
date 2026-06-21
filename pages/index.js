@@ -421,7 +421,7 @@ function FormPanel({
             <div style={{ ...labelStyle, fontSize: '11px', color: '#808080', marginBottom: '6px' }}>포인트컬러</div>
             <div style={{ display: 'flex', gap: '6px' }}>
               {[
-                ['#e29898', '동성회'], ['#e2ca7a', '오미연합'], ['#84b7f0', '경찰'], ['#9fd1b5', '변호사'],
+                ['#e29898', '동성회'], ['#cbbc8b', '오미연합'], ['#84b7f0', '경찰'], ['#9fd1b5', '변호사'],
               ].map(([color, title]) => (
                 <button key={color} onClick={() => setAccentColor(color)} title={title}
                   style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: accentColor === color ? '3px solid #ffffff' : '2px solid transparent', outline: accentColor === color ? `2px solid ${color}` : 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'all 0.15s' }} />
