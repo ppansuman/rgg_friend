@@ -1,7 +1,7 @@
 {
   "name": "rgg_friend",
-  "version": "0.4.1",
-  "lastUpdated": "2026.06.20",
+  "version": "0.5.0",
+  "lastUpdated": "2026.06.21",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,9 +10,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "dom-to-image-more": "^3.10.0",
+    "html2canvas": "^1.4.1",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-twemoji": "^0.7.2",
     "twemoji-parser": "^14.0.0"
   },
   "devDependencies": {
