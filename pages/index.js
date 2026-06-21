@@ -837,7 +837,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>용스튜 트친소/소개표 생성기</title>
+        <title>용스튜 소개표 생성기</title>
         <link rel="icon" href="/favicon.ico" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600&display=swap" />
