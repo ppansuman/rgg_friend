@@ -253,7 +253,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
 
   return (
     <div style={{ width: px(cardW), backgroundColor: bgColor, fontFamily: 'Pretendard, sans-serif', boxSizing: 'border-box' }}>
-      <div style={{ padding: padding, paddingBottom: fs(20) }}>
+      <div style={{ padding: padding, paddingBottom: fs(20), paddingTop: fs(25) }}>
         {/* 헤더 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: fs(20), alignItems: 'flex-end', marginBottom: sectionGap }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: fs(8), flexWrap: 'wrap' }}>
