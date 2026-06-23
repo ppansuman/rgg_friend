@@ -1,7 +1,7 @@
 {
   "name": "rgg_friend",
   "version": "0.5.2",
-  "lastUpdated": "2026.06.21",
+  "lastUpdated": "2026.06.23",
   "private": true,
   "scripts": {
     "dev": "next dev",
