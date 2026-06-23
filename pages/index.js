@@ -41,7 +41,47 @@ function buildInitialSelections() {
 }
 
 
-function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, familyIcon }) {
+// ─── 스티커 아이템 (바운딩박스 + 핸들) ───────────────────────
+function StickerItem({ s, cardW, selected, onMouseDown, isExporting }) {
+  const handleSize = Math.max(10, cardW * 0.012);
+  return (
+    <div
+      data-sticker-id={s.id}
+      onMouseDown={isExporting ? undefined : (e) => onMouseDown(e, s.id, 'move')}
+      style={{
+        position: 'absolute',
+        left: `${s.x}%`,
+        top: `${s.y}%`,
+        width: `${s.width}%`,
+        transform: `rotate(${s.rotation}deg)`,
+        transformOrigin: 'center center',
+        cursor: isExporting ? 'default' : 'move',
+        userSelect: 'none',
+        zIndex: s.layer === 'above' ? 10 : 1,
+        outline: selected ? `${Math.max(1, cardW * 0.001)}px dashed rgba(100,140,255,0.8)` : 'none',
+      }}
+    >
+      <img src={s.src} alt="" style={{ width: '100%', display: 'block', pointerEvents: 'none', userSelect: 'none' }} />
+      {selected && !isExporting && (
+        <>
+          {/* 코너 핸들 */}
+          {[['nw','top','left'],['ne','top','right'],['sw','bottom','left'],['se','bottom','right']].map(([dir,v,h]) => (
+            <div key={dir} onMouseDown={(e) => { e.stopPropagation(); onMouseDown(e, s.id, `resize-${dir}`); }}
+              style={{ position: 'absolute', [v]: -handleSize/2, [h]: -handleSize/2, width: handleSize, height: handleSize, borderRadius: '50%', backgroundColor: '#4488ff', cursor: `${dir}-resize`, zIndex: 20, border: '2px solid white' }} />
+          ))}
+          {/* 회전 핸들 */}
+          <div onMouseDown={(e) => { e.stopPropagation(); onMouseDown(e, s.id, 'rotate'); }}
+            style={{ position: 'absolute', top: -handleSize * 2.5, left: '50%', transform: 'translateX(-50%)', width: handleSize, height: handleSize, borderRadius: '50%', backgroundColor: '#44cc88', cursor: 'grab', zIndex: 20, border: '2px solid white' }} />
+          {/* 삭제 버튼 */}
+          <div onMouseDown={(e) => { e.stopPropagation(); onMouseDown(e, s.id, 'delete'); }}
+            style={{ position: 'absolute', top: -handleSize/2, right: -handleSize * 1.8, width: handleSize * 1.4, height: handleSize * 1.4, borderRadius: '50%', backgroundColor: '#ff4444', cursor: 'pointer', zIndex: 20, border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: handleSize * 0.8, fontWeight: 'bold', lineHeight: 1 }}>×</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, familyIcon, selectedFont, stickers = [], selectedStickerId, onStickerMouseDown, isExporting = false }) {
   const {
     nickname, twitterId, fubFree,
     selections, spoilerValue, spoilerOther,
@@ -116,8 +156,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
             if (opt === '기타') {
               if (!otherText.trim()) return null;
               return hasOtherOnly
-                ? <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(14), color: textColor }}>{otherText}</span></Twemoji>
-                : <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(14), color: textColor, marginBottom: fs(5) }}>{otherText}</span></Twemoji>;
+                ? <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(13), color: textColor }}>{otherText}</span></Twemoji>
+                : <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(13), color: textColor, marginBottom: fs(5) }}>{otherText}</span></Twemoji>;
             }
             return <PreviewBadge key={opt} label={opt} />;
           })}
@@ -131,13 +171,15 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     const text = selections[row.key] || '';
     if (!text.trim()) return null;
     return (
-      <div key={row.key} style={{ display: 'flex', alignItems: 'center', marginBottom: fs(12) }}>
-        <span style={{ minWidth: fs(80), fontSize: fs(13), fontWeight: '800', color: subTextColor, flexShrink: 0 }}>
-          {row.title}
-        </span>
-        <Twemoji options={{ className: 'twemoji' }}>
-          <span style={{ fontSize: fs(14), color: textColor, whiteSpace: 'pre-wrap', flex: 1 }}>{text}</span>
-        </Twemoji>
+      <div key={row.key} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: fs(12) }}>
+        <div style={{ minWidth: fs(80), flexShrink: 0, paddingTop: fs(3) }}>
+          <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor }}>{row.title}</span>
+        </div>
+        <div style={{ flex: 1, paddingTop: fs(3) }}>
+          <Twemoji options={{ className: 'twemoji' }}>
+            <span style={{ fontSize: fs(13), color: textColor, whiteSpace: 'pre-wrap' }}>{text}</span>
+          </Twemoji>
+        </div>
       </div>
     );
   };
@@ -145,15 +187,17 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const renderCustomRow = () => {
     if (!customTitle.trim() || !customValue.trim()) return null;
     return (
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: fs(12) }}>
-        <Twemoji options={{ className: 'twemoji' }}>
-          <span style={{ minWidth: fs(80), fontSize: fs(13), fontWeight: '800', color: subTextColor, flexShrink: 0 }}>
-            {customTitle}
-          </span>
-        </Twemoji>
-        <Twemoji options={{ className: 'twemoji' }}>
-          <span style={{ fontSize: fs(14), color: textColor, flex: 1 }}>{customValue}</span>
-        </Twemoji>
+      <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: fs(12) }}>
+        <div style={{ minWidth: fs(80), flexShrink: 0, paddingTop: fs(3) }}>
+          <Twemoji options={{ className: 'twemoji' }}>
+            <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor }}>{customTitle}</span>
+          </Twemoji>
+        </div>
+        <div style={{ flex: 1, paddingTop: fs(3) }}>
+          <Twemoji options={{ className: 'twemoji' }}>
+            <span style={{ fontSize: fs(13), color: textColor }}>{customValue}</span>
+          </Twemoji>
+        </div>
       </div>
     );
   };
@@ -162,7 +206,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: fs(6), width: fs(160) }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: fs(8) }}>
         <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor, whiteSpace: 'nowrap' }}>스포일러</span>
-        <span style={{ fontSize: fs(14), fontWeight: '800', color: accentDark }}>{spoilerLabel}</span>
+        <span style={{ fontSize: fs(13), fontWeight: '800', color: accentDark }}>{spoilerLabel}</span>
       </div>
       <div style={{ width: '100%', height: fs(7), backgroundColor: getLuminance(bgColor) > 128 ? '#e8e8e8' : '#444444', borderRadius: '999px', overflow: 'hidden' }}>
         <div style={{ width: `${spoilerValue}%`, height: '100%', backgroundColor: accentColor, borderRadius: '999px' }} />
@@ -214,8 +258,12 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
         <div style={{ display: 'flex', flexDirection: 'column', gap: fs(10) }}>
           {soloGroup && <GroupBlock group={soloGroup} />}
           {colGroups.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: fs(10) }}>
-              {colGroups.map(g => <div key={g.state} style={{ minWidth: 0, flex: 1 }}><GroupBlock group={g} /></div>)}
+            <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: fs(40), rowGap: fs(10), alignItems: 'flex-start' }}>
+              {colGroups.map((g, i) => (
+                <div key={g.state} style={{ flex: i === 0 ? '0 1 auto' : '1 1 auto', minWidth: 0 }}>
+                  <GroupBlock group={g} />
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -232,7 +280,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
         <div style={{ padding: `${fs(12)} ${fs(24)} ${fs(24)}`, backgroundColor: getLuminance(bgColor) > 128 ? '#f5f5f5' : '#2a2a2a', borderRadius: fs(8) }}>
           <div style={{ fontSize: fs(10), fontWeight: '800', color: subTextColor, marginBottom: fs(4) }}>{commentRow?.title}</div>
           <Twemoji options={{ className: 'twemoji' }}>
-            <div style={{ fontSize: fs(14), color: textColor, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{text}</div>
+            <div style={{ fontSize: fs(13), color: textColor, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{text}</div>
           </Twemoji>
         </div>
       </div>
@@ -243,8 +291,12 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const sectionGap = fs(20);
 
   return (
-    <div style={{ width: px(cardW), backgroundColor: bgColor, fontFamily: 'Pretendard, sans-serif', boxSizing: 'border-box' }}>
-      <div style={{ padding: padding, paddingBottom: fs(10), paddingTop: fs(15) }}>
+    <div style={{ width: px(cardW), backgroundColor: bgColor, fontFamily: selectedFont || 'Pretendard, sans-serif', boxSizing: 'border-box', position: 'relative', zIndex: 0 }}>
+      {/* 스티커 — 텍스트 아래 레이어 */}
+      {stickers.filter(s => s.layer === 'below').map(s => (
+        <StickerItem key={s.id} s={s} cardW={cardW} selected={!isExporting && selectedStickerId === s.id} onMouseDown={onStickerMouseDown} isExporting={isExporting} />
+      ))}
+      <div style={{ padding: padding, paddingBottom: fs(10), paddingTop: fs(15), position: 'relative', zIndex: 2 }}>
         {/* 헤더 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: fs(20), alignItems: 'flex-end', marginBottom: sectionGap }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: fs(8), flexWrap: 'wrap' }}>
@@ -327,11 +379,15 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
         <CommentBlock />
       </div>
       {/* 하단 사이트 정보 */}
-      <div style={{ textAlign: 'center', paddingBottom: fs(10) }}>
+      <div style={{ textAlign: 'center', paddingBottom: fs(10), fontFamily: 'Pretendard, sans-serif' }}>
         <span style={{ fontSize: fs(8), color: getLuminance(bgColor) > 128 ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.22)' }}>
           용스튜 소개표 생성기 {SITE_URL} v{version}
         </span>
       </div>
+      {/* 스티커 — 텍스트 위 레이어 */}
+      {stickers.filter(s => s.layer === 'above').map(s => (
+        <StickerItem key={s.id} s={s} cardW={cardW} selected={!isExporting && selectedStickerId === s.id} onMouseDown={onStickerMouseDown} isExporting={isExporting} />
+      ))}
     </div>
   );
 }
@@ -342,6 +398,7 @@ function FormPanel({
   bgColor, setBgColor,
   badgeTextCustom, setBadgeTextCustom,
   familyIcon, setFamilyIcon,
+  selectedFont, setSelectedFont,
   nickname, setNickname, twitterId, setTwitterId,
   fubFree, setFubFree,
   selections, toggleOption, setFieldText,
@@ -349,6 +406,7 @@ function FormPanel({
   spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
   gameStates, setGameState,
   handleDownloadImage, handleResetAll,
+  stickers = [], selectedStickerId, setSelectedStickerId, handleAddSticker,
   isMobile,
 }) {
   const [hexInput, setHexInput] = useState(accentColor);
@@ -414,89 +472,137 @@ function FormPanel({
         )}
     </div>
 
-      {/* 색상 */ }
-  <div style={cardStyle}>
-    <h2 style={h2Style}>색상</h2>
+      {/* 스타일 */}
+      <div style={cardStyle}>
+        <h2 style={h2Style}>스타일</h2>
 
-    {/* 1행: 배경 칩 + 포인트컬러 프리셋 + 컬러커스텀 뱃지 */}
-    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: colorCustomOpen ? '12px' : '0', flexWrap: 'wrap' }}>
-      {/* 배경 */}
-      <div>
-        <div style={{ ...labelStyle, fontSize: '11px', color: '#808080', marginBottom: '6px' }}>배경</div>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          {[
-            ['#ffffff', '밝은 배경', '3px solid #cccccc'],
-            ['#1a1a1a', '어두운 배경', '3px solid #555555'],
-          ].map(([color, title, selBorder]) => (
-            <button key={color} onClick={() => {
-              setBgColor(color);
-              setBadgeTextCustom(color === '#1a1a1a' ? '#ebebeb' : '#1a1a1a');
-              if (!colorCustomOpen) {
-                const lightPresets = ['#e29898', '#cab366', '#6ca3e1', '#8ac2a3'];
-                const darkPresets = ['#7b4747', '#7b692d', '#2a4f79', '#3c7260'];
-                const lightIdx = lightPresets.indexOf(accentColor);
-                const darkIdx = darkPresets.indexOf(accentColor);
-                if (color === '#1a1a1a' && lightIdx !== -1) setAccentColor(darkPresets[lightIdx]);
-                if (color === '#ffffff' && darkIdx !== -1) setAccentColor(lightPresets[darkIdx]);
-              }
-            }} title={title}
-              style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: bgColor === color ? selBorder : '2px solid transparent', outline: bgColor === color ? '2px solid #888' : 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }} />
-          ))}
+        {/* 색상 */}
+        <div style={{ marginBottom: colorCustomOpen ? '16px' : '12px' }}>
+          <div style={{ ...labelStyle, fontSize: '12px', color: '#808080', marginBottom: '10px' }}>색상</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: colorCustomOpen ? '12px' : '0', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ ...labelStyle, fontSize: '11px', color: '#808080', marginBottom: '6px' }}>배경</div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {[
+                  ['#ffffff', '밝은 배경', '3px solid #cccccc'],
+                  ['#1a1a1a', '어두운 배경', '3px solid #555555'],
+                ].map(([color, title, selBorder]) => (
+                  <button key={color} onClick={() => {
+                    setBgColor(color);
+                    setBadgeTextCustom(color === '#1a1a1a' ? '#ebebeb' : '#1a1a1a');
+                    if (!colorCustomOpen) {
+                      const lightPresets = ['#e29898', '#cab366', '#6ca3e1', '#8ac2a3'];
+                      const darkPresets = ['#7b4747', '#7b692d', '#2a4f79', '#3c7260'];
+                      const lightIdx = lightPresets.indexOf(accentColor);
+                      const darkIdx = darkPresets.indexOf(accentColor);
+                      if (color === '#1a1a1a' && lightIdx !== -1) setAccentColor(darkPresets[lightIdx]);
+                      if (color === '#ffffff' && darkIdx !== -1) setAccentColor(lightPresets[darkIdx]);
+                    }
+                  }} title={title}
+                    style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: bgColor === color ? selBorder : '2px solid transparent', outline: bgColor === color ? '2px solid #888' : 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }} />
+                ))}
+              </div>
+            </div>
+            <div style={{ width: '1px', height: '32px', backgroundColor: '#404040' }} />
+            <div>
+              <div style={{ ...labelStyle, fontSize: '11px', color: '#808080', marginBottom: '6px' }}>포인트컬러</div>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                {(bgColor === '#1a1a1a'
+                  ? [['#7b4747', '동성회'], ['#7b692d', '오미연합'], ['#2a4f79', '경찰'], ['#3c7260', '변호사']]
+                  : [['#e29898', '동성회'], ['#cab366', '오미연합'], ['#6ca3e1', '경찰'], ['#8ac2a3', '변호사']]
+                ).map(([color, title]) => (
+                  <button key={color} onClick={() => { setAccentColor(color); setColorCustomOpen(false); setBadgeTextCustom(bgColor === '#1a1a1a' ? '#ebebeb' : '#1a1a1a'); }} title={title}
+                    style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: accentColor === color && !colorCustomOpen ? '3px solid #ffffff' : '2px solid transparent', outline: accentColor === color && !colorCustomOpen ? `2px solid ${color}` : 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'all 0.15s' }} />
+                ))}
+                <button
+                  onClick={() => {
+                    const next = !colorCustomOpen;
+                    setColorCustomOpen(next);
+                    if (!next) setBadgeTextCustom(bgColor === '#1a1a1a' ? '#ebebeb' : '#1a1a1a');
+                  }}
+                  style={{ ...getBadgeStyle(colorCustomOpen, accentColor), fontSize: '11px', padding: '3px 10px' }}
+                >
+                  컬러커스텀
+                </button>
+              </div>
+            </div>
+          </div>
+          {colorCustomOpen && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', flexWrap: 'wrap', paddingTop: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ ...labelStyle, fontSize: '11px', color: '#808080' }}>포인트</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)}
+                    style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', cursor: 'pointer', padding: 0, backgroundColor: 'transparent', flexShrink: 0 }} />
+                  <input type="text" value={hexInput} onChange={(e) => handleHexChange(e.target.value)}
+                    maxLength={7} placeholder="#e29898"
+                    style={{ ...inputStyle, width: '100px', fontFamily: 'inherit', fontSize: '13px' }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ ...labelStyle, fontSize: '11px', color: '#808080' }}>뱃지 글자</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="color" value={badgeTextCustom} onChange={(e) => setBadgeTextCustom(e.target.value)}
+                    style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', cursor: 'pointer', padding: 0, backgroundColor: 'transparent', flexShrink: 0 }} />
+                  <input type="text" value={badgeTextCustom} onChange={(e) => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setBadgeTextCustom(e.target.value); }}
+                    maxLength={7} placeholder="#1a1a1a"
+                    style={{ ...inputStyle, width: '100px', fontFamily: 'inherit', fontSize: '13px' }} />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-      <div style={{ width: '1px', height: '32px', backgroundColor: '#404040' }} />
-      {/* 포인트컬러 프리셋 */}
-      <div>
-        <div style={{ ...labelStyle, fontSize: '11px', color: '#808080', marginBottom: '6px' }}>포인트컬러</div>
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-          {(bgColor === '#1a1a1a'
-            ? [['#7b4747', '동성회'], ['#7b692d', '오미연합'], ['#2a4f79', '경찰'], ['#3c7260', '변호사']]
-            : [['#e29898', '동성회'], ['#cab366', '오미연합'], ['#6ca3e1', '경찰'], ['#8ac2a3', '변호사']]
-          ).map(([color, title]) => (
-            <button key={color} onClick={() => { setAccentColor(color); setColorCustomOpen(false); setBadgeTextCustom(bgColor === '#1a1a1a' ? '#ebebeb' : '#1a1a1a'); }} title={title}
-              style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: accentColor === color && !colorCustomOpen ? '3px solid #ffffff' : '2px solid transparent', outline: accentColor === color && !colorCustomOpen ? `2px solid ${color}` : 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'all 0.15s' }} />
-          ))}
-          {/* 컬러커스텀 뱃지 */}
-          <button
-            onClick={() => {
-              const next = !colorCustomOpen;
-              setColorCustomOpen(next);
-              if (!next) setBadgeTextCustom(bgColor === '#1a1a1a' ? '#ebebeb' : '#1a1a1a');
-            }}
-            style={{ ...getBadgeStyle(colorCustomOpen, accentColor), fontSize: '11px', padding: '3px 10px' }}
+
+        {/* 구분선 */}
+        <div style={{ height: '1px', backgroundColor: '#404040', marginBottom: '12px' }} />
+
+        {/* 폰트 */}
+        <div>
+          <div style={{ ...labelStyle, fontSize: '12px', color: '#808080', marginBottom: '8px' }}>폰트</div>
+          <select
+            value={selectedFont}
+            onChange={(e) => setSelectedFont(e.target.value)}
+            suppressHydrationWarning
+            style={{ ...inputStyle, cursor: 'pointer' }}
           >
-            컬러커스텀
-          </button>
+            {[
+              { value: 'Pretendard',                   label: 'Pretendard (기본)' },
+              { value: "'JoseonGulim', sans-serif",     label: '조선굴림체' },
+              { value: "'MaruBuri', serif",             label: '마루 부리' },
+              { value: "'ChosunIlboMyungjo', serif",    label: '조선일보명조체' },
+              { value: "'OngleipEoyeonce', sans-serif",  label: '온글잎 의연체' },
+              { value: "'Galmuri11', sans-serif",       label: '갈무리11' },
+            ].map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
         </div>
-      </div>
-    </div>
 
-    {/* 2행: 커스텀 포인트컬러 + 뱃지 글자 — 접히는 영역 */}
-    {colorCustomOpen && (
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', flexWrap: 'wrap', paddingTop: '4px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ ...labelStyle, fontSize: '11px', color: '#808080' }}>포인트</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)}
-              style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', cursor: 'pointer', padding: 0, backgroundColor: 'transparent', flexShrink: 0 }} />
-            <input type="text" value={hexInput} onChange={(e) => handleHexChange(e.target.value)}
-              maxLength={7} placeholder="#e29898"
-              style={{ ...inputStyle, width: '100px', fontFamily: 'inherit', fontSize: '13px' }} />
+        {/* 구분선 */}
+        <div style={{ height: '1px', backgroundColor: '#404040', margin: '12px 0' }} />
+
+          {/* 스티커 */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ ...labelStyle, fontSize: '12px', color: '#808080' }}>스티커</div>
+              <span style={{ fontSize: '11px', color: '#606060' }}>PNG · 개당 500KB 이하</span>
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <button onClick={handleAddSticker}
+                style={{ ...getBadgeStyle(true, accentColor), cursor: 'pointer', fontSize: '12px', padding: '4px 12px' }}>
+                + 이미지 추가
+              </button>
+            </div>
+            {stickers.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {stickers.map(s => (
+                  <div key={s.id} onClick={() => setSelectedStickerId(s.id === selectedStickerId ? null : s.id)}
+                    style={{ width: 40, height: 40, borderRadius: '4px', border: s.id === selectedStickerId ? `2px solid ${accentColor}` : '2px solid #404040', cursor: 'pointer', overflow: 'hidden', flexShrink: 0, backgroundColor: '#1a1a1a' }}>
+                    <img src={s.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ ...labelStyle, fontSize: '11px', color: '#808080' }}>뱃지 글자</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <input type="color" value={badgeTextCustom} onChange={(e) => setBadgeTextCustom(e.target.value)}
-              style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', cursor: 'pointer', padding: 0, backgroundColor: 'transparent', flexShrink: 0 }} />
-            <input type="text" value={badgeTextCustom} onChange={(e) => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setBadgeTextCustom(e.target.value); }}
-              maxLength={7} placeholder="#1a1a1a"
-              style={{ ...inputStyle, width: '100px', fontFamily: 'inherit', fontSize: '13px' }} />
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
 
   {/* 기본 정보 */ }
   <div style={cardStyle}>
@@ -534,7 +640,7 @@ function FormPanel({
       {/* FUB FREE */}
       <div>
         <label style={{ ...labelStyle, display: 'block', marginBottom: '6px', paddingTop: '2px', fontSize: '12px', color: '#808080' }}>FUB FREE</label>
-        <button onClick={() => setFubFree(!fubFree)} style={getBadgeStyle(fubFree, accentColor)}>
+        <button onClick={() => setFubFree(!fubFree)} style={{ ...getBadgeStyle(fubFree, accentColor), position: 'relative', top: '2px' }}>
           FUB FREE
         </button>
       </div>
@@ -559,7 +665,7 @@ function FormPanel({
       />
       <span style={labelStyle}>%</span>
     </div>
-    <input type="text" placeholder="추가 내용 (선택사항, 최대 22자)" value={spoilerOther} onChange={(e) => setSpoilerOther(e.target.value.slice(0, 22))} suppressHydrationWarning style={inputStyle} />
+    <input type="text" placeholder="추가 내용 (선택사항, 공백 포함 최대 15자)" value={spoilerOther} onChange={(e) => setSpoilerOther(e.target.value.slice(0, 15))} suppressHydrationWarning style={inputStyle} />
   </div>
 
   {/* ROWS */ }
@@ -686,6 +792,13 @@ export default function Home() {
   const [bgColor, setBgColorState] = useState('#ffffff');
   const [badgeTextCustom, setBadgeTextCustomState] = useState('#1a1a1a');
   const [familyIcon, setFamilyIconState] = useState('tojo');
+  const [selectedFont, setSelectedFontState] = useState('Pretendard');
+  const [stickers, setStickers] = useState([]);
+  const [selectedStickerId, setSelectedStickerId] = useState(null);
+  const [stickerLayer, setStickerLayer] = useState('above');
+  const dragRef = useRef(null);
+  const previewInnerRef = useRef(null);
+  const stickerFileInputRef = useRef(null);
   const [nickname, setNicknameState] = useState('');
   const [twitterId, setTwitterIdState] = useState('');
   const [fubFree, setFubFreeState] = useState(false);
@@ -707,6 +820,8 @@ export default function Home() {
     const bg = lsGet('rgg_bgColor'); if (bg) setBgColorState(bg);
     const tc = lsGet('rgg_badgeTextCustom'); if (tc) setBadgeTextCustomState(tc);
     const fi = lsGet('rgg_familyIcon'); setFamilyIconState(fi || 'tojo');
+    const sf = lsGet('rgg_selectedFont'); if (sf) setSelectedFontState(sf);
+    try { const st = lsGet('rgg_stickers'); if (st) setStickers(JSON.parse(st)); } catch(e) {}
     const n = lsGet('rgg_nickname'); if (n) setNicknameState(n);
     const t = lsGet('rgg_twitterId'); if (t) setTwitterIdState(t);
     const f = lsGet('rgg_fubFree'); if (f) setFubFreeState(f === 'true');
@@ -722,6 +837,84 @@ export default function Home() {
   const setBgColor = (v) => { setBgColorState(v); lsSet('rgg_bgColor', v); };
   const setBadgeTextCustom = (v) => { setBadgeTextCustomState(v); lsSet('rgg_badgeTextCustom', v); };
   const setFamilyIcon = (v) => { setFamilyIconState(v); lsSet('rgg_familyIcon', v); };
+  const setSelectedFont = (v) => { setSelectedFontState(v); lsSet('rgg_selectedFont', v); };
+
+  const saveStickers = (arr) => {
+    setStickers(arr);
+    try { lsSet('rgg_stickers', JSON.stringify(arr)); } catch(e) {}
+  };
+
+  const handleAddSticker = () => {
+    stickerFileInputRef.current?.click();
+  };
+
+  const handleStickerFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) { alert('이미지는 500KB 이하만 가능합니다.'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const newS = { id: Date.now(), src: ev.target.result, x: 30, y: 10, width: 20, rotation: 0, layer: stickerLayer };
+      const next = [...stickers, newS];
+      saveStickers(next);
+      setSelectedStickerId(newS.id);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleStickerMouseDown = (e, id, action) => {
+    if (action === 'delete') { saveStickers(stickers.filter(s => s.id !== id)); setSelectedStickerId(null); return; }
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedStickerId(id);
+    const s = stickers.find(st => st.id === id);
+    if (!s || !previewInnerRef.current) return;
+
+    // previewInnerRef는 zoom 적용된 div — getBoundingClientRect()는 실제 화면 픽셀 기준
+    const rect = previewInnerRef.current.getBoundingClientRect();
+    // 카드 원본 크기 → 화면 표시 크기 비율
+    const displayW = rect.width;   // zoom 적용된 실제 화면 너비
+    // 회전 중심 계산 (화면 좌표)
+    const cx = rect.left + displayW * (s.x / 100) + displayW * (s.width / 100) / 2;
+    const cy = rect.top + rect.height * (s.y / 100) + displayW * (s.width / 100) / 2;
+
+    dragRef.current = { action, id, startX: e.clientX, startY: e.clientY, origS: { ...s }, cx, cy, displayW };
+
+    const onMove = (me) => {
+      if (!dragRef.current) return;
+      const { action, origS, startX, startY, displayW, cx, cy } = dragRef.current;
+      // 화면 픽셀 이동 → 카드 % 비율로 변환
+      const dxPct = (me.clientX - startX) / displayW * 100;
+      const dyPct = (me.clientY - startY) / displayW * 100;  // 가로 기준으로 통일
+
+      setStickers(prev => prev.map(st => {
+        if (st.id !== id) return st;
+        if (action === 'move') return {
+          ...st,
+          x: Math.min(95, origS.x + dxPct),
+          y: Math.min(95, origS.y + dyPct),
+        };
+        if (action === 'rotate') {
+          const angle = Math.atan2(me.clientY - cy, me.clientX - cx) * (180 / Math.PI);
+          return { ...st, rotation: Math.round(angle + 90) };
+        }
+        if (action.startsWith('resize')) {
+          const dw = action.includes('e') ? dxPct : -dxPct;
+          return { ...st, width: Math.max(3, Math.min(100, origS.width + dw)) };
+        }
+        return st;
+      }));
+    };
+    const onUp = () => {
+      setStickers(prev => { try { lsSet('rgg_stickers', JSON.stringify(prev)); } catch(e) {} return prev; });
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
   const setNickname = (v) => { setNicknameState(v); lsSet('rgg_nickname', v); };
   const setTwitterId = (v) => { setTwitterIdState(v); lsSet('rgg_twitterId', v); };
   const setFubFree = (v) => { setFubFreeState(v); lsSet('rgg_fubFree', String(v)); };
@@ -819,6 +1012,9 @@ export default function Home() {
     setBgColorState('#ffffff');
     setBadgeTextCustomState('#1a1a1a');
     setFamilyIconState('tojo');
+    setSelectedFontState('Pretendard');
+    saveStickers([]);
+    setSelectedStickerId(null);
     setNicknameState('');
     setTwitterIdState('');
     setFubFreeState(false);
@@ -848,12 +1044,14 @@ export default function Home() {
       overflowY: isMobile ? 'visible' : 'auto',
       overflowX: 'hidden',
     }}>
+      {/* 숨김 파일 input — 스티커 추가용 */}
+      <input ref={stickerFileInputRef} type="file" accept="image/png,image/gif,image/webp" onChange={handleStickerFile} style={{ display: 'none' }} />
       {/* 저장용 원본 — 화면 밖에 숨김 */}
       <div ref={previewRef} style={{ position: 'fixed', left: '-9999px', top: 0, width: `${cardW}px`, pointerEvents: 'none', zIndex: -1 }}>
-        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} />
+        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} stickers={stickers} isExporting={true} />
       </div>
       {/* 미리보기 — zoom 적용 */}
-      <div style={{
+      <div ref={previewInnerRef} data-preview-inner style={{
         zoom: zoom,
         borderRadius: `${8 / zoom}px`,
         border: `${1 / zoom}px solid #333`,
@@ -862,7 +1060,7 @@ export default function Home() {
         maxWidth: '100%',
         width: `${cardW}px`,
       }}>
-        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} />
+        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} stickers={stickers} selectedStickerId={selectedStickerId} onStickerMouseDown={handleStickerMouseDown} />
       </div>
     </div>
   );
@@ -872,6 +1070,7 @@ export default function Home() {
     bgColor, setBgColor,
     badgeTextCustom, setBadgeTextCustom,
     familyIcon, setFamilyIcon,
+    selectedFont, setSelectedFont,
     nickname, setNickname, twitterId, setTwitterId,
     fubFree, setFubFree,
     selections, toggleOption, setFieldText,
@@ -879,6 +1078,7 @@ export default function Home() {
     spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
     gameStates, setGameState,
     handleDownloadImage, handleResetAll,
+    stickers, selectedStickerId, setSelectedStickerId, handleAddSticker,
     isMobile,
   };
 
@@ -889,6 +1089,16 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600&display=swap" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css" />
+        <style>{`
+          @font-face { font-family: 'Galmuri11'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2506-1@1.0/Galmuri11-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+          @font-face { font-family: 'ChosunIlboMyungjo'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/Chosunilbo_myungjo.woff') format('woff'); font-weight: normal; font-display: swap; }
+          @font-face { font-family: 'MaruBuri'; src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2'); font-weight: 400; font-display: swap; }
+          @font-face { font-family: 'MaruBuri'; src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-SemiBold.woff2'); font-weight: 600; font-display: swap; }
+          @font-face { font-family: 'MaruBuri'; src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2'); font-weight: 700; font-display: swap; }
+          @font-face { font-family: 'JoseonGulim'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@1.0/ChosunGu.woff') format('woff'); font-weight: normal; font-display: swap; }
+          @font-face { font-family: 'OngleipEoyeonce'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105@1.1/Uiyeun.woff') format('woff'); font-weight: normal; font-display: swap; }
+        `}</style>
         <style>{`.twemoji{height:1em!important;width:1em!important;display:inline!important;vertical-align:-0.1em!important}`}</style>
       </Head>
 
