@@ -1,5 +1,5 @@
 # 용스튜 트친소/소개표 생성기
-![Version](https://img.shields.io/badge/version-v0.6.1-blue)
+![Version](https://img.shields.io/badge/version-v0.6.2-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 트친소표를 보다 편리하게 제작하고 공유하기 위해 만들어진 웹 기반 생성기입니다.
@@ -45,6 +45,9 @@ https://rgg-friend.vercel.app/
 ---
 
 ## 업데이트 내역
+
+### v0.6.2 · 2026.06.24
+- 그림자 효과 제거(오류로 인한 조치, 추후 다시 추가될 수 있음)
 
 ### v0.6.1 · 2026.06.24
 - 폰트 변경(온글잎 의연체->교보손글씨 2019)
