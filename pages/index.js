@@ -889,11 +889,8 @@ export default function Home() {
     const s = stickers.find(st => st.id === id);
     if (!s || !previewInnerRef.current) return;
 
-    // previewInnerRef는 zoom 적용된 div — getBoundingClientRect()는 실제 화면 픽셀 기준
     const rect = previewInnerRef.current.getBoundingClientRect();
-    // 카드 원본 크기 → 화면 표시 크기 비율
-    const displayW = rect.width;   // zoom 적용된 실제 화면 너비
-    // 회전 중심 계산 (화면 좌표)
+    const displayW = rect.width / zoom;  // zoom 역산해서 카드 원본 크기 기준으로
     const cx = rect.left + displayW * (s.x / 100) + displayW * (s.width / 100) / 2;
     const cy = rect.top + rect.height * (s.y / 100) + displayW * (s.width / 100) / 2;
 
