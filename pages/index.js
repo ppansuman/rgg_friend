@@ -102,8 +102,12 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     customTitle, customValue, gameStates,
   } = data;
 
-  const familySrc =
-    FAMILY_ICONS.find(i => i.key === familyIcon)?.src;
+  const familyIconData = FAMILY_ICONS.find(i => i.key === familyIcon);
+  const familySrc = familyIconData
+    ? (getLuminance(bgColor) > 128
+        ? familyIconData.src
+        : (familyIconData.srcDark || familyIconData.src))
+    : null;
 
   const cardW = IMAGE_SIZE.vertical.width;
   const px = (n) => `${n}px`;
@@ -160,6 +164,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     if (selected.length === 0) return null;
     const otherText = selections[row.key + 'Other'] || '';
     const hasOtherOnly = selected.length === 1 && selected[0] === '기타';
+    const hasOtherBadges = selected.length > 1; // 기타 외 다른 뱃지가 함께 있는지
+    const otherFontSize = hasOtherBadges ? 10 : 13;
     return (
       <div key={row.key} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: fs(9) }}>
         <span style={{ minWidth: fs(80), fontSize: fs(13), fontWeight: '800', color: subTextColor, flexShrink: 0, paddingTop: fs(3) }}>
@@ -170,8 +176,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
             if (opt === '기타') {
               if (!otherText.trim()) return null;
               return hasOtherOnly
-                ? <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(13), color: textColor }}>{otherText}</span></Twemoji>
-                : <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(13), color: textColor, marginBottom: fs(5) }}>{otherText}</span></Twemoji>;
+                ? <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block', paddingTop: fs(3) }}>{otherText}</span></Twemoji>
+                : <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block', paddingTop: fs(3) }}>{otherText}</span></Twemoji>;
             }
             return <PreviewBadge key={opt} label={opt} />;
           })}
@@ -313,7 +319,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
       <div style={{ padding: padding, paddingBottom: fs(10), paddingTop: fs(15), position: 'relative', zIndex: 2 }}>
         {/* 헤더 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: fs(20), alignItems: 'flex-end', marginBottom: sectionGap }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: fs(8), flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: fs(8), flexWrap: 'nowrap', minWidth: 0 }}>
 
             {familySrc && (
               <img
@@ -329,13 +335,30 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
                 }}
               />
             )}
-            <Twemoji options={{ className: 'twemoji' }}>
-              <span style={{ fontSize: fs(38), fontWeight: '700', color: textColor, lineHeight: 1.1 }}>
-                {nickname || '닉네임'}
-              </span>
-            </Twemoji>
+            {(() => {
+              const len = (nickname || '닉네임').length;
+              const nicknameFontSize = len <= 6 ? 38 : len <= 9 ? 30 : len <= 14 ? 22 : 18;
+              const nicknameOffset   = len <= 6 ? 0  : len <= 9 ? 2  : len <= 14 ? 7  : 7;
+              return (
+                <div style={{ minWidth: 0, flexShrink: 1, overflow: 'hidden' }}>
+                  <Twemoji options={{ className: 'twemoji' }}>
+                    <span style={{
+                      fontSize: fs(nicknameFontSize),
+                      fontWeight: '700',
+                      color: textColor,
+                      lineHeight: 1.1,
+                      display: 'block',
+                      whiteSpace: 'nowrap',
+                      marginBottom: fs(nicknameOffset),
+                    }}>
+                      {nickname || '닉네임'}
+                    </span>
+                  </Twemoji>
+                </div>
+              );
+            })()}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: fs(2), justifyContent: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: fs(2), justifyContent: 'center', position: 'relative', top: fs(-5), flexShrink: 0 }}>
               {fubFree && (
                 <span style={{
                   display: 'inline-block', alignSelf: 'flex-start',
@@ -343,14 +366,14 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
                   backgroundColor: badgeBgColor,
                   color: badgeText,
                   border: `${fs(1)} solid ${badgeBorder}`,
-                  padding: `${fs(3)} ${fs(10)}`, borderRadius: '999px', whiteSpace: 'nowrap'
+                  padding: `${fs(0)} ${fs(8)}`, borderRadius: '999px', whiteSpace: 'nowrap'
                 }}>
                   FUB FREE
                 </span>
               )}
 
               <Twemoji options={{ className: 'twemoji' }}>
-                <span style={{ fontSize: fs(12), color: accentDark, fontFamily: 'Inter, sans-serif', fontWeight: '400' }}>
+                <span style={{ fontSize: fs(12), color: textColor, fontFamily: 'Inter, sans-serif', fontWeight: '400', whiteSpace: 'nowrap' }}>
                   {twitterId || '@yourIDhere'}
                 </span>
               </Twemoji>
@@ -605,8 +628,11 @@ function FormPanel({
         <h2 style={h2Style}>기본 정보</h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
           <div>
-            <label style={{ ...labelStyle, display: 'block', marginBottom: '6px' }}>닉네임</label>
-            <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="닉네임" suppressHydrationWarning style={inputStyle} />
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+              닉네임
+              <span style={{ fontSize: '11px', color: '#808080', fontWeight: '400' }}>(최대 14자)</span>
+            </label>
+            <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value.slice(0, 14))} maxLength={14} placeholder="닉네임" suppressHydrationWarning style={inputStyle} />
           </div>
           <div>
             <label style={{ ...labelStyle, display: 'block', marginBottom: '6px' }}>트위터 아이디</label>
@@ -619,7 +645,7 @@ function FormPanel({
             <label style={{ ...labelStyle, display: 'block', marginBottom: '6px', fontSize: '12px', color: '#808080' }}>소속 아이콘</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {familyIcon && familyIcon !== 'none' && (
-                <img src={FAMILY_ICONS.find(f => f.key === familyIcon)?.src || ''} alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+                <img src={(() => { const ic = FAMILY_ICONS.find(f => f.key === familyIcon); return (ic?.srcDark || ic?.src) || ''; })()} alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
               )}
               <select
                 value={familyIcon}
