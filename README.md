@@ -1,5 +1,5 @@
 # 용스튜 트친소/소개표 생성기
-![Version](https://img.shields.io/badge/version-v0.6.2-blue)
+![Version](https://img.shields.io/badge/version-v0.7.0-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 트친소표를 보다 편리하게 제작하고 공유하기 위해 만들어진 웹 기반 생성기입니다.
@@ -45,6 +45,14 @@ https://rgg-friend.vercel.app/
 ---
 
 ## 업데이트 내역
+
+### v0.7.0 · 2026.06.30
+- 아이콘 25종 추가
+- 트위터 아이디 살짝 위로 조정, 본문색상 적용
+- FUB FREE 사이즈 조정
+- 닉네임 길이에 따라 글자 크기 자동 조정
+- 닉네임 길이 최대 14자로 제한
+- 기타란 뱃지 있는 경우 글자 크기 작게 수정
 
 ### v0.6.2 · 2026.06.24
 - 그림자 효과 제거(오류로 인한 조치, 추후 다시 추가될 수 있음)
