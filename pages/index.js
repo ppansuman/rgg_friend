@@ -894,7 +894,9 @@ export default function Home() {
     if (!s || !previewInnerRef.current) return;
 
     const rect = previewInnerRef.current.getBoundingClientRect();
-    const displayW = rect.width; // CSS zoom이 반영된 실제 화면상 카드 너비
+    // 브라우저별로 CSS zoom이 getBoundingClientRect에 반영되는 정도가 달라
+    // rect.width를 직접 신뢰하지 않고 cardW * zoom으로 항상 동일하게 계산한다
+    const displayW = cardW * zoom;
     const cx = rect.left + displayW * (s.x / 100) + displayW * (s.width / 100) / 2;
     const cy = rect.top + displayW * (s.y / 100) + displayW * (s.width / 100) / 2;
 
