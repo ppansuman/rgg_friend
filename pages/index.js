@@ -894,10 +894,9 @@ export default function Home() {
     if (!s || !previewInnerRef.current) return;
 
     const rect = previewInnerRef.current.getBoundingClientRect();
-    const displayW = rect.width;
-    const effectiveW = displayW * zoom;
-    const cx = rect.left + effectiveW * (s.x / 100) + effectiveW * (s.width / 100) / 2;
-    const cy = rect.top + effectiveW * (s.y / 100) + effectiveW * (s.width / 100) / 2;
+    const displayW = rect.width; // CSS zoom이 반영된 실제 화면상 카드 너비
+    const cx = rect.left + displayW * (s.x / 100) + displayW * (s.width / 100) / 2;
+    const cy = rect.top + displayW * (s.y / 100) + displayW * (s.width / 100) / 2;
 
     dragRef.current = { action, id, startX: e.clientX, startY: e.clientY, origS: { ...s }, cx, cy, displayW };
 
@@ -905,8 +904,8 @@ export default function Home() {
       if (!dragRef.current) return;
       const { action, origS, startX, startY, displayW, cx, cy } = dragRef.current;
       const pt = me.touches ? me.touches[0] : me;
-      const dxPct = (pt.clientX - startX) / displayW * 100 / zoom;
-      const dyPct = (pt.clientY - startY) / displayW * 100 / zoom;
+      const dxPct = (pt.clientX - startX) / displayW * 100;
+      const dyPct = (pt.clientY - startY) / displayW * 100;
 
       setStickers(prev => prev.map(st => {
         if (st.id !== id) return st;
