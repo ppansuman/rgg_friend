@@ -177,7 +177,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
               if (!otherText.trim()) return null;
               return hasOtherOnly
                 ? <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block', paddingTop: fs(3) }}>{otherText}</span></Twemoji>
-                : <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block', paddingTop: fs(3) }}>{otherText}</span></Twemoji>;
+                : <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block' }}>{otherText}</span></Twemoji>;
             }
             return <PreviewBadge key={opt} label={opt} />;
           })}
