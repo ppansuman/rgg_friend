@@ -1,5 +1,5 @@
 # 용스튜 소개표 생성기
-![Version](https://img.shields.io/badge/version-v0.7.2-blue)
+![Version](https://img.shields.io/badge/version-v0.8.0-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 🔗 https://rgg-friend.vercel.app/
@@ -36,8 +36,8 @@
 - ~이미지 디자인 및 레이아웃 개선~
 - ~스티커 기능(원하는 이미지 소개표 위에 올릴 수 있도록)~
 - ~폰트 3종 제공~
-- 아이콘 추가
-- 가로형 이미지 제공
+- ~아이콘 추가~
+- ~가로형 이미지 제공~
 
 ### v2.0.0
 - 다국어 지원(영어, 일본어, 중국어)
@@ -46,6 +46,14 @@
 ---
 
 ## 업데이트 내역
+
+### v0.8.0 · 2026.07.06
+- 가로형 이미지 제공
+- 폰트 크기 일부 수정(게임 플레이 현황 제목들)
+- 스포일러바 크기 작게 조정
+- MUTUALS ONLY 추가
+- 기타입력란 제목 넘침 수정
+- 아이콘 9종 추가
 
 ### v0.7.2 · 2026.07.01
 - 게임목록 추가: 야쿠자 워즈
