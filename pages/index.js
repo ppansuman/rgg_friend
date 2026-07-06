@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, Fragment } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, Fragment } from 'react';
 import Twemoji from 'react-twemoji';
 import Head from 'next/head';
 import { version, lastUpdated } from '../package.json';
@@ -6,6 +6,7 @@ import { version, lastUpdated } from '../package.json';
 import {
   ROWS, IMAGE_SIZE, GAME_STATES, GAME_STATE_LABELS,
   GAME_STATE_GROUPS, GAMES, SITE_URL, DEFAULT_ACCENT, LS_KEYS, FAMILY_ICONS,
+  SUBSCRIBE_OPTIONS,
 } from '../lib/constants';
 
 import {
@@ -95,24 +96,88 @@ function StickerItem({ s, cardW, selected, onMouseDown, isExporting }) {
   );
 }
 
-function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, familyIcon, selectedFont, stickers = [], selectedStickerId, onStickerMouseDown, isExporting = false }) {
+function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, familyIcon, selectedFont, stickers = [], selectedStickerId, onStickerMouseDown, isExporting = false, layout = 'vertical' }) {
   const {
-    nickname, twitterId, fubFree,
+    nickname, twitterId, subscribeFollow,
     selections, spoilerValue, spoilerOther,
     customTitle, customValue, gameStates,
   } = data;
 
+  const isHorizontal = layout === 'horizontal';
   const familyIconData = FAMILY_ICONS.find(i => i.key === familyIcon);
   const familySrc = familyIconData
     ? (getLuminance(bgColor) > 128
-        ? familyIconData.src
-        : (familyIconData.srcDark || familyIconData.src))
+      ? familyIconData.src
+      : (familyIconData.srcDark || familyIconData.src))
     : null;
 
-  const cardW = IMAGE_SIZE.vertical.width;
+  const cardW = isHorizontal ? 1920 : IMAGE_SIZE.vertical.width;
   const px = (n) => `${n}px`;
-  const FONT_SCALE = (cardW / 620);
+  const FONT_SCALE = isHorizontal ? (cardW / 900) : (cardW / 620);
   const fs = (n) => px(Math.round(n * FONT_SCALE));
+
+  const leftItemsRef = useRef(null);
+  const rightColRef = useRef(null);
+  const [commentPlacement, setCommentPlacement] = useState('left'); // 'left' | 'full'
+
+  useLayoutEffect(() => {
+    if (!isHorizontal) return undefined;
+
+    const countRowsOf = (elements) => {
+      const tops = [];
+      elements.forEach((el) => {
+        const top = Math.round(el.offsetTop);
+        if (!tops.some((t) => Math.abs(t - top) < 4)) tops.push(top);
+      });
+      return tops.length;
+    };
+
+    const measure = () => {
+      if (!rightColRef.current || !leftItemsRef.current) {
+        setCommentPlacement('left');
+        return;
+      }
+
+      const selectedGroupCount = GAME_STATE_GROUPS.filter(
+        (g) => GAMES.some((gm) => gameStates[gm.key] === g.state)
+      ).length;
+
+      if (selectedGroupCount === 0) {
+        setCommentPlacement('left');
+        return;
+      }
+
+      // 오른쪽: 그룹(완료/플레이중/구매완료)별로 각각 줄 수를 센 뒤 합산한다.
+      // 완료는 단독으로 쌓이고, 플레이중/구매완료는 나란히(병렬로) 배치되므로
+      // 그 둘은 더하지 않고 더 긴 쪽(max)만 반영한다.
+      const countRowsIn = (state) => {
+        const container = rightColRef.current.querySelector(`[data-group-state="${state}"]`);
+        if (!container) return 0;
+        return countRowsOf(container.querySelectorAll('[data-game-badge]'));
+      };
+
+      const completeRows = countRowsIn('완료');
+      const playingRows = countRowsIn('플레이중');
+      const purchasedRows = countRowsIn('구매완료');
+      const badgeRows = completeRows + Math.max(playingRows, purchasedRows);
+
+      // 그룹 제목(플레이 완료/플레이 중/구매 완료)도 한 줄만큼의 무게로 취급한다.
+      const rightWeight = badgeRows + selectedGroupCount;
+
+      // 왼쪽: 실제 렌더링된 줄 수(뱃지 줄바꿈 포함)를 그대로 센다.
+      const leftRows = countRowsOf(leftItemsRef.current.querySelectorAll('[data-left-item]'));
+
+      setCommentPlacement(leftRows >= rightWeight ? 'full' : 'left');
+    };
+
+    measure(); // 페인트 전에 즉시 계산 → 깜빡임/점프 없음
+
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    if (leftItemsRef.current) ro.observe(leftItemsRef.current);
+    if (rightColRef.current) ro.observe(rightColRef.current);
+    return () => ro.disconnect();
+  }, [isHorizontal, selections, gameStates, customTitle, customValue]);
 
   const textColor = getLuminance(bgColor) > 128 ? '#1a1a1a' : '#ebebeb';
   const subTextColor = getLuminance(bgColor) > 128 ? '#555555' : '#aaaaaa';
@@ -138,7 +203,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const badgeText = badgeTextCustom || '#ffffff';
 
   const PreviewBadge = ({ label }) => (
-    <span style={{
+    <span data-left-item style={{
       display: 'inline-block',
       padding: `${fs(0)} ${fs(8)}`,
       borderRadius: '999px',
@@ -176,8 +241,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
             if (opt === '기타') {
               if (!otherText.trim()) return null;
               return hasOtherOnly
-                ? <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block', paddingTop: fs(3) }}>{otherText}</span></Twemoji>
-                : <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block' }}>{otherText}</span></Twemoji>;
+                ? <Twemoji key="other" options={{ className: 'twemoji' }}><span data-left-item style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block', paddingTop: fs(3) }}>{otherText}</span></Twemoji>
+                : <Twemoji key="other" options={{ className: 'twemoji' }}><span data-left-item style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block' }}>{otherText}</span></Twemoji>;
             }
             return <PreviewBadge key={opt} label={opt} />;
           })}
@@ -197,7 +262,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
         </div>
         <div style={{ flex: 1, paddingTop: fs(3) }}>
           <Twemoji options={{ className: 'twemoji' }}>
-            <span style={{ fontSize: fs(13), color: textColor, whiteSpace: 'pre-wrap' }}>{text}</span>
+            <span data-left-item style={{ fontSize: fs(13), color: textColor, whiteSpace: 'pre-wrap' }}>{text}</span>
           </Twemoji>
         </div>
       </div>
@@ -208,14 +273,14 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     if (!customTitle.trim() || !customValue.trim()) return null;
     return (
       <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: fs(12) }}>
-        <div style={{ minWidth: fs(80), flexShrink: 0, paddingTop: fs(3) }}>
+        <div style={{ width: fs(80), flexShrink: 0, paddingTop: fs(3) }}>
           <Twemoji options={{ className: 'twemoji' }}>
-            <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor }}>{customTitle}</span>
+            <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor, wordBreak: 'break-word', overflowWrap: 'break-word' }}>{customTitle}</span>
           </Twemoji>
         </div>
         <div style={{ flex: 1, paddingTop: fs(3) }}>
           <Twemoji options={{ className: 'twemoji' }}>
-            <span style={{ fontSize: fs(13), color: textColor }}>{customValue}</span>
+            <span data-left-item style={{ fontSize: fs(13), color: textColor }}>{customValue}</span>
           </Twemoji>
         </div>
       </div>
@@ -223,12 +288,12 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   };
 
   const SpoilerInline = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: fs(6), width: fs(160) }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: fs(4), width: fs(120) }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: fs(8) }}>
         <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor, whiteSpace: 'nowrap' }}>스포일러</span>
         <span style={{ fontSize: fs(13), fontWeight: '800', color: accentDark }}>{spoilerLabel}</span>
       </div>
-      <div style={{ width: '100%', height: fs(7), backgroundColor: getLuminance(bgColor) > 128 ? '#e8e8e8' : '#444444', borderRadius: '999px', overflow: 'hidden' }}>
+      <div style={{ width: '100%', height: fs(4), backgroundColor: getLuminance(bgColor) > 128 ? '#e8e8e8' : '#444444', borderRadius: '999px', overflow: 'hidden' }}>
         <div style={{ width: `${spoilerValue}%`, height: '100%', backgroundColor: accentColor, borderRadius: '999px' }} />
       </div>
       {spoilerOther.trim() && (
@@ -244,7 +309,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     const colGroups = gameGroups.filter(g => g.state === '플레이중' || g.state === '구매완료');
 
     const GameBadge = ({ label }) => (
-      <span style={{
+      <span data-game-badge style={{
         display: 'inline-block',
         padding: `${fs(0)} ${fs(8)}`,
         borderRadius: '999px',
@@ -262,8 +327,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     );
 
     const GroupBlock = ({ group }) => (
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor, marginBottom: fs(8) }}>{group.title}</div>
+      <div data-group-state={group.state} style={{ minWidth: 0 }}>
+        <div style={{ fontSize: fs(10), fontWeight: '800', color: subTextColor, marginBottom: fs(8) }}>{group.title}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
           {group.games.map((gm) => <GameBadge key={gm.key} label={gm.title} />)}
         </div>
@@ -271,14 +336,14 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     );
 
     return (
-      <div style={{ marginBottom: fs(8), marginTop: fs(25) }}>
-        <div style={{ fontSize: fs(15), fontWeight: '700', color: subTextColor, marginBottom: fs(8), paddingBottom: fs(8), borderBottom: `1.5px solid ${borderColor}` }}>
+      <div style={{ marginBottom: isHorizontal ? 0 : fs(8), marginTop: isHorizontal ? 0 : fs(25) }}>
+        <div style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor, marginBottom: fs(8), paddingBottom: isHorizontal ? 0 : fs(8), borderBottom: isHorizontal ? 'none' : `1.5px solid ${borderColor}` }}>
           게임 플레이 현황
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: fs(10) }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: fs(4) }}>
           {soloGroup && <GroupBlock group={soloGroup} />}
           {colGroups.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: fs(40), rowGap: fs(10), alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: fs(40), rowGap: fs(4), alignItems: 'flex-start' }}>
               {colGroups.map((g, i) => (
                 <div key={g.state} style={{ flex: i === 0 ? '0 1 auto' : '1 1 auto', minWidth: 0 }}>
                   <GroupBlock group={g} />
@@ -296,7 +361,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     const text = selections['comment'] || '';
     if (!text.trim()) return null;
     return (
-      <div style={{ marginTop: fs(10) }}>
+      <div style={{ paddingTop: isHorizontal ? fs(10) : fs(5) }}>
         <div style={{ padding: `${fs(12)} ${fs(24)} ${fs(24)}`, backgroundColor: getLuminance(bgColor) > 128 ? '#f5f5f5' : '#2a2a2a', borderRadius: fs(8) }}>
           <div style={{ fontSize: fs(10), fontWeight: '800', color: subTextColor, marginBottom: fs(4) }}>{commentRow?.title}</div>
           <Twemoji options={{ className: 'twemoji' }}>
@@ -338,7 +403,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
             {(() => {
               const len = (nickname || '닉네임').length;
               const nicknameFontSize = len <= 6 ? 38 : len <= 9 ? 30 : len <= 14 ? 22 : 18;
-              const nicknameOffset   = len <= 6 ? 0  : len <= 9 ? 2  : len <= 14 ? 7  : 7;
+              const nicknameOffset = len <= 6 ? 0 : len <= 9 ? 2 : len <= 14 ? 7 : 7;
               return (
                 <div style={{ minWidth: 0, flexShrink: 1, overflow: 'hidden' }}>
                   <Twemoji options={{ className: 'twemoji' }}>
@@ -359,17 +424,21 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
             })()}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: fs(2), justifyContent: 'center', position: 'relative', top: fs(-5), flexShrink: 0 }}>
-              {fubFree && (
-                <span style={{
-                  display: 'inline-block', alignSelf: 'flex-start',
-                  fontSize: fs(11), fontWeight: '600',
-                  backgroundColor: badgeBgColor,
-                  color: badgeText,
-                  border: `${fs(1)} solid ${badgeBorder}`,
-                  padding: `${fs(0)} ${fs(8)}`, borderRadius: '999px', whiteSpace: 'nowrap'
-                }}>
-                  FUB FREE
-                </span>
+              {(subscribeFollow || []).length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: fs(4), justifyContent: 'flex-start' }}>
+                  {subscribeFollow.map((opt) => (
+                    <span key={opt} style={{
+                      display: 'inline-block', alignSelf: 'flex-start',
+                      fontSize: fs(11), fontWeight: '600',
+                      backgroundColor: badgeBgColor,
+                      color: badgeText,
+                      border: `${fs(1)} solid ${badgeBorder}`,
+                      padding: `${fs(0)} ${fs(8)}`, borderRadius: '999px', whiteSpace: 'nowrap'
+                    }}>
+                      {opt}
+                    </span>
+                  ))}
+                </div>
               )}
 
               <Twemoji options={{ className: 'twemoji' }}>
@@ -382,20 +451,73 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
 
           </div>
           {hasSpoiler && (
-            <div style={{ minWidth: fs(160), marginBottom: fs(4) }}>
+            <div style={{ minWidth: fs(120), marginBottom: fs(4) }}>
               <SpoilerInline />
             </div>
           )}
         </div>
         <div style={{ height: '1.5px', backgroundColor: borderColor, marginBottom: sectionGap }} />
-        {ROWS.map((row) => {
-          if (row.type === 'option') return renderOptionRow(row);
-          if (row.type === 'free' && row.key !== 'comment') return renderFreeRow(row);
-          if (row.type === 'custom') return renderCustomRow();
-          return null;
-        })}
-        {hasGameSection && <GameSection />}
-        <CommentBlock />
+        {isHorizontal ? (
+          /* ─── 가로형 레이아웃 ─── */
+          (() => {
+            const rightWidth = `${Math.round(cardW / 3)}px`;
+            const leftWidth = `calc(100% - ${rightWidth} - ${fs(40)})`;
+            if (!hasGameSection) {
+              return (
+                <>
+                  <div style={{ width: leftWidth, maxWidth: '100%' }}>
+                    {ROWS.map((row) => {
+                      if (row.type === 'option') return renderOptionRow(row);
+                      if (row.type === 'free' && row.key !== 'comment') return renderFreeRow(row);
+                      if (row.type === 'custom') return renderCustomRow();
+                      return null;
+                    })}
+                  </div>
+                  <CommentBlock />
+                </>
+              );
+            }
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: `${leftWidth} ${rightWidth}`, columnGap: fs(40), rowGap: 0, alignItems: 'flex-start' }}>
+                {/* 왼쪽 2/3 */}
+                <div style={{ minWidth: 0 }}>
+                  <div ref={leftItemsRef}>
+                    {ROWS.map((row) => {
+                      if (row.type === 'option') return renderOptionRow(row);
+                      if (row.type === 'free' && row.key !== 'comment') return renderFreeRow(row);
+                      if (row.type === 'custom') return renderCustomRow();
+                      return null;
+                    })}
+                  </div>
+                  {/* 한마디 — 왼쪽이 더 짧을 때 여기 표시 */}
+                  {commentPlacement === 'left' && <CommentBlock />}
+                </div>
+                {/* 오른쪽 1/3 */}
+                <div ref={rightColRef} style={{ minWidth: 0, display: 'flow-root', position: 'relative', top: fs(-4) }}>
+                  <GameSection />
+                </div>
+                {/* 한마디 — 왼쪽이 더 길면 grid 전체 너비 */}
+                {commentPlacement === 'full' && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <CommentBlock />
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        ) : (
+          /* ─── 세로형 레이아웃 (기존) ─── */
+          <>
+            {ROWS.map((row) => {
+              if (row.type === 'option') return renderOptionRow(row);
+              if (row.type === 'free' && row.key !== 'comment') return renderFreeRow(row);
+              if (row.type === 'custom') return renderCustomRow();
+              return null;
+            })}
+            {hasGameSection && <GameSection />}
+            <CommentBlock />
+          </>
+        )}
       </div>
       {/* 하단 사이트 정보 */}
       <div style={{ textAlign: 'center', paddingBottom: fs(10), fontFamily: 'Pretendard, sans-serif' }}>
@@ -418,8 +540,9 @@ function FormPanel({
   badgeTextCustom, setBadgeTextCustom,
   familyIcon, setFamilyIcon,
   selectedFont, setSelectedFont,
+  selectedLayout, setSelectedLayout,
   nickname, setNickname, twitterId, setTwitterId,
-  fubFree, setFubFree,
+  subscribeFollow, toggleSubscribeFollow,
   selections, toggleOption, setFieldText,
   customTitle, setCustomTitle, customValue, setCustomValue,
   spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
@@ -494,6 +617,27 @@ function FormPanel({
       {/* 스타일 */}
       <div style={cardStyle}>
         <h2 style={h2Style}>스타일</h2>
+
+        {/* 레이아웃 */}
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ ...labelStyle, fontSize: '12px', color: '#808080', marginBottom: '8px' }}>레이아웃</div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[['vertical', '세로'], ['horizontal', '가로']].map(([val, lbl]) => (
+              <label key={val} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: selectedLayout === val ? '#ffffff' : '#b0b0b0' }}>
+                <input
+                  type="radio"
+                  name="layout"
+                  value={val}
+                  checked={selectedLayout === val}
+                  onChange={() => setSelectedLayout(val)}
+                  style={{ accentColor: accentColor, cursor: 'pointer' }}
+                />
+                {lbl}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div style={{ height: '1px', backgroundColor: '#404040', marginBottom: '12px' }} />
 
         {/* 색상 */}
         <div style={{ marginBottom: colorCustomOpen ? '16px' : '12px' }}>
@@ -659,12 +803,17 @@ function FormPanel({
               </select>
             </div>
           </div>
-          {/* FUB FREE */}
+          {/* 구독 및 팔로우 */}
           <div>
-            <label style={{ ...labelStyle, display: 'block', marginBottom: '6px', paddingTop: '2px', fontSize: '12px', color: '#808080' }}>FUB FREE</label>
-            <button onClick={() => setFubFree(!fubFree)} style={{ ...getBadgeStyle(fubFree, accentColor), position: 'relative', top: '2px' }}>
-              FUB FREE
-            </button>
+            <label style={{ ...labelStyle, display: 'block', marginBottom: '6px', paddingTop: '2px', fontSize: '12px', color: '#808080' }}>구독 및 팔로우</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {SUBSCRIBE_OPTIONS.map((option) => (
+                <button key={option} onClick={() => toggleSubscribeFollow(option)}
+                  style={{ ...getBadgeStyle((subscribeFollow || []).includes(option), accentColor), position: 'relative', top: '2px' }}>
+                  {option}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -815,6 +964,7 @@ export default function Home() {
   const [badgeTextCustom, setBadgeTextCustomState] = useState('#1a1a1a');
   const [familyIcon, setFamilyIconState] = useState('tojo');
   const [selectedFont, setSelectedFontState] = useState('Pretendard');
+  const [selectedLayout, setSelectedLayoutState] = useState('vertical');
   const [stickers, setStickers] = useState([]);
   const [selectedStickerId, setSelectedStickerId] = useState(null);
   const [stickerLayer, setStickerLayer] = useState('above');
@@ -823,7 +973,7 @@ export default function Home() {
   const stickerFileInputRef = useRef(null);
   const [nickname, setNicknameState] = useState('');
   const [twitterId, setTwitterIdState] = useState('');
-  const [fubFree, setFubFreeState] = useState(false);
+  const [subscribeFollow, setSubscribeFollowState] = useState([]);
   const [customTitle, setCustomTitleState] = useState('');
   const [customValue, setCustomValueState] = useState('');
   const [selections, setSelectionsState] = useState(buildInitialSelections);
@@ -843,10 +993,11 @@ export default function Home() {
     const tc = lsGet('rgg_badgeTextCustom'); if (tc) setBadgeTextCustomState(tc);
     const fi = lsGet('rgg_familyIcon'); setFamilyIconState(fi || 'tojo');
     const sf = lsGet('rgg_selectedFont'); if (sf) setSelectedFontState(sf);
+    const sl = lsGet('rgg_selectedLayout'); if (sl) setSelectedLayoutState(sl);
     try { const st = lsGet('rgg_stickers'); if (st) setStickers(JSON.parse(st)); } catch (e) { }
     const n = lsGet('rgg_nickname'); if (n) setNicknameState(n);
     const t = lsGet('rgg_twitterId'); if (t) setTwitterIdState(t);
-    const f = lsGet('rgg_fubFree'); if (f) setFubFreeState(f === 'true');
+    const sf2 = lsGet('rgg_subscribeFollow'); if (sf2) { try { setSubscribeFollowState(JSON.parse(sf2)); } catch (e) { } }
     const ct = lsGet('rgg_customTitle'); if (ct) setCustomTitleState(ct);
     const cv = lsGet('rgg_customValue'); if (cv) setCustomValueState(cv);
     const s = lsGet('rgg_selections'); if (s) setSelectionsState(JSON.parse(s));
@@ -860,6 +1011,7 @@ export default function Home() {
   const setBadgeTextCustom = (v) => { setBadgeTextCustomState(v); lsSet('rgg_badgeTextCustom', v); };
   const setFamilyIcon = (v) => { setFamilyIconState(v); lsSet('rgg_familyIcon', v); };
   const setSelectedFont = (v) => { setSelectedFontState(v); lsSet('rgg_selectedFont', v); };
+  const setSelectedLayout = (v) => { setSelectedLayoutState(v); lsSet('rgg_selectedLayout', v); };
 
   const saveStickers = (arr) => {
     setStickers(arr);
@@ -942,7 +1094,13 @@ export default function Home() {
   };
   const setNickname = (v) => { setNicknameState(v); lsSet('rgg_nickname', v); };
   const setTwitterId = (v) => { setTwitterIdState(v); lsSet('rgg_twitterId', v); };
-  const setFubFree = (v) => { setFubFreeState(v); lsSet('rgg_fubFree', String(v)); };
+  const setSubscribeFollow = (v) => { setSubscribeFollowState(v); lsSet('rgg_subscribeFollow', JSON.stringify(v)); };
+  const toggleSubscribeFollow = (option) => {
+    // FUB FREE / MUTUALS ONLY는 서로 배타적: 하나만 선택되거나 둘 다 선택 안 될 수 있음
+    setSubscribeFollow(
+      (subscribeFollow || []).includes(option) ? [] : [option]
+    );
+  };
   const setCustomTitle = (v) => { setCustomTitleState(v); lsSet('rgg_customTitle', v); };
   const setCustomValue = (v) => { setCustomValueState(v); lsSet('rgg_customValue', v); };
   const setSpoilerValue = (v) => { setSpoilerValueState(v); lsSet('rgg_spoilerValue', String(v)); };
@@ -978,7 +1136,7 @@ export default function Home() {
     setGameStates((prev) => ({ ...prev, [key]: state }));
   }
 
-  const cardW = IMAGE_SIZE.vertical.width;
+  const cardW = selectedLayout === 'horizontal' ? 1920 : IMAGE_SIZE.vertical.width;
 
   useEffect(() => {
     function update() {
@@ -994,10 +1152,19 @@ export default function Home() {
       setZoom(Math.min(scaleByW, scaleByH, 0.5));
     }
     update();
-    const t = setTimeout(update, 100);
     window.addEventListener('resize', update);
-    return () => { clearTimeout(t); window.removeEventListener('resize', update); };
-  }, [isMobile]);
+
+    let ro;
+    if (previewWrapRef.current && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(update);
+      ro.observe(previewWrapRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', update);
+      if (ro) ro.disconnect();
+    };
+  }, [isMobile, cardW]);
 
   async function handleDownloadImage() {
     if (!previewRef.current) return;
@@ -1034,11 +1201,12 @@ export default function Home() {
     setBadgeTextCustomState('#1a1a1a');
     setFamilyIconState('tojo');
     setSelectedFontState('Pretendard');
+    setSelectedLayoutState('vertical');
     saveStickers([]);
     setSelectedStickerId(null);
     setNicknameState('');
     setTwitterIdState('');
-    setFubFreeState(false);
+    setSubscribeFollowState([]);
     setCustomTitleState('');
     setCustomValueState('');
     setSelectionsState(buildInitialSelections());
@@ -1050,7 +1218,7 @@ export default function Home() {
     LS_KEYS.forEach(lsRemove);
   }
 
-  const previewData = { nickname, twitterId, fubFree, selections, spoilerValue, spoilerOther, customTitle, customValue, gameStates };
+  const previewData = { nickname, twitterId, subscribeFollow, selections, spoilerValue, spoilerOther, customTitle, customValue, gameStates };
 
   const PreviewArea = (
     <div ref={previewWrapRef} style={{
@@ -1069,7 +1237,7 @@ export default function Home() {
       <input ref={stickerFileInputRef} type="file" accept="image/png,image/gif,image/webp" onChange={handleStickerFile} style={{ display: 'none' }} />
       {/* 저장용 원본 — 화면 밖에 숨김 */}
       <div ref={previewRef} style={{ position: 'fixed', left: '-9999px', top: 0, width: `${cardW}px`, pointerEvents: 'none', zIndex: -1 }}>
-        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} stickers={stickers} isExporting={true} />
+        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} isExporting={true} />
       </div>
       {/* 미리보기 — zoom 적용 */}
       <div ref={previewInnerRef} data-preview-inner style={{
@@ -1077,11 +1245,10 @@ export default function Home() {
         borderRadius: `${8 / zoom}px`,
         border: `${1 / zoom}px solid #333`,
         overflow: 'hidden',
-        flexShrink: 0,
         maxWidth: '100%',
         width: `${cardW}px`,
       }}>
-        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} stickers={stickers} selectedStickerId={selectedStickerId} onStickerMouseDown={handleStickerMouseDown} />
+        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} selectedStickerId={selectedStickerId} onStickerMouseDown={handleStickerMouseDown} />
       </div>
     </div>
   );
@@ -1092,8 +1259,9 @@ export default function Home() {
     badgeTextCustom, setBadgeTextCustom,
     familyIcon, setFamilyIcon,
     selectedFont, setSelectedFont,
+    selectedLayout, setSelectedLayout,
     nickname, setNickname, twitterId, setTwitterId,
-    fubFree, setFubFree,
+    subscribeFollow, toggleSubscribeFollow,
     selections, toggleOption, setFieldText,
     customTitle, setCustomTitle, customValue, setCustomValue,
     spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
