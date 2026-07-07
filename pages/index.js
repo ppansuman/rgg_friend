@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, Fragment } from 'react';
+import { useEffect, useRef, useState, Fragment } from 'react';
 import Twemoji from 'react-twemoji';
 import Head from 'next/head';
 import { version, lastUpdated } from '../package.json';
@@ -103,7 +103,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const {
     nickname, twitterId, subscribeFollow,
     selections, spoilerValue, spoilerOther,
-    customTitle, customValue, gameStates,
+    customTitle, customValue, gameStates, commentNarrow,
   } = data;
 
   const isHorizontal = layout === 'horizontal';
@@ -119,63 +119,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const FONT_SCALE = isHorizontal ? (cardW / 900) : (cardW / 620);
   const fs = (n) => px(Math.round(n * FONT_SCALE));
 
-  const leftItemsRef = useRef(null);
-  const rightColRef = useRef(null);
-  const [commentPlacement, setCommentPlacement] = useState('left');
-
-  useLayoutEffect(() => {
-    if (!isHorizontal) return undefined;
-
-    const countRowsOf = (elements) => {
-      const tops = [];
-      elements.forEach((el) => {
-        const top = Math.round(el.offsetTop);
-        if (!tops.some((t) => Math.abs(t - top) < 4)) tops.push(top);
-      });
-      return tops.length;
-    };
-
-    const measure = () => {
-      if (!rightColRef.current || !leftItemsRef.current) {
-        setCommentPlacement('left');
-        return;
-      }
-
-      const selectedGroupCount = GAME_STATE_GROUPS.filter(
-        (g) => GAMES.some((gm) => gameStates[gm.key] === g.state)
-      ).length;
-
-      if (selectedGroupCount === 0) {
-        setCommentPlacement('left');
-        return;
-      }
-
-      const countRowsIn = (state) => {
-        const container = rightColRef.current.querySelector(`[data-group-state="${state}"]`);
-        if (!container) return 0;
-        return countRowsOf(container.querySelectorAll('[data-game-badge]'));
-      };
-
-      const completeRows = countRowsIn('완료');
-      const playingRows = countRowsIn('플레이중');
-      const purchasedRows = countRowsIn('구매완료');
-      const badgeRows = completeRows + Math.max(playingRows, purchasedRows);
-
-      const rightWeight = badgeRows + selectedGroupCount;
-
-      const leftRows = countRowsOf(leftItemsRef.current.querySelectorAll('[data-left-item]'));
-
-      setCommentPlacement(leftRows >= rightWeight ? 'full' : 'left');
-    };
-
-    measure();
-
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(measure);
-    if (leftItemsRef.current) ro.observe(leftItemsRef.current);
-    if (rightColRef.current) ro.observe(rightColRef.current);
-    return () => ro.disconnect();
-  }, [isHorizontal, selections, gameStates, customTitle, customValue]);
+  // 가로형에서 한마디란을 꽉 차게 할지 왼쪽으로 좁힐지는 사용자가 직접 토글로 선택한다
+  const commentPlacement = commentNarrow ? 'left' : 'full';
 
   const textColor = getLuminance(bgColor) > 128 ? '#1a1a1a' : '#ebebeb';
   const subTextColor = getLuminance(bgColor) > 128 ? '#555555' : '#aaaaaa';
@@ -201,7 +146,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const badgeText = badgeTextCustom || '#ffffff';
 
   const PreviewBadge = ({ label }) => (
-    <span data-left-item style={{
+    <span style={{
       display: 'inline-block',
       padding: `${fs(0)} ${fs(8)}`,
       borderRadius: '999px',
@@ -239,8 +184,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
             if (opt === '기타') {
               if (!otherText.trim()) return null;
               return hasOtherOnly
-                ? <Twemoji key="other" options={{ className: 'twemoji' }}><span data-left-item style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block', paddingTop: fs(3) }}>{otherText}</span></Twemoji>
-                : <Twemoji key="other" options={{ className: 'twemoji' }}><span data-left-item style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block' }}>{otherText}</span></Twemoji>;
+                ? <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block', paddingTop: fs(3) }}>{otherText}</span></Twemoji>
+                : <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block' }}>{otherText}</span></Twemoji>;
             }
             return <PreviewBadge key={opt} label={opt} />;
           })}
@@ -260,7 +205,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
         </div>
         <div style={{ flex: 1, paddingTop: fs(3) }}>
           <Twemoji options={{ className: 'twemoji' }}>
-            <span data-left-item style={{ fontSize: fs(13), color: textColor, whiteSpace: 'pre-wrap' }}>{text}</span>
+            <span style={{ fontSize: fs(13), color: textColor, whiteSpace: 'pre-wrap' }}>{text}</span>
           </Twemoji>
         </div>
       </div>
@@ -278,7 +223,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
         </div>
         <div style={{ flex: 1, paddingTop: fs(3) }}>
           <Twemoji options={{ className: 'twemoji' }}>
-            <span data-left-item style={{ fontSize: fs(13), color: textColor }}>{customValue}</span>
+            <span style={{ fontSize: fs(13), color: textColor }}>{customValue}</span>
           </Twemoji>
         </div>
       </div>
@@ -307,7 +252,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     const colGroups = gameGroups.filter(g => g.state === '플레이중' || g.state === '구매완료');
 
     const GameBadge = ({ label }) => (
-      <span data-game-badge style={{
+      <span style={{
         display: 'inline-block',
         padding: `${fs(0)} ${fs(8)}`,
         borderRadius: '999px',
@@ -325,7 +270,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     );
 
     const GroupBlock = ({ group }) => (
-      <div data-group-state={group.state} style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: fs(10), fontWeight: '800', color: subTextColor, marginBottom: fs(8) }}>{group.title}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
           {group.games.map((gm) => <GameBadge key={gm.key} label={gm.title} />)}
@@ -479,7 +424,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
               <div style={{ display: 'grid', gridTemplateColumns: `${leftWidth} ${rightWidth}`, columnGap: fs(40), rowGap: 0, alignItems: 'flex-start' }}>
                 {/* 왼쪽 2/3 */}
                 <div style={{ minWidth: 0 }}>
-                  <div ref={leftItemsRef}>
+                  <div>
                     {ROWS.map((row) => {
                       if (row.type === 'option') return renderOptionRow(row);
                       if (row.type === 'free' && row.key !== 'comment') return renderFreeRow(row);
@@ -491,7 +436,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
                   {commentPlacement === 'left' && <CommentBlock />}
                 </div>
                 {/* 오른쪽 1/3 */}
-                <div ref={rightColRef} style={{ minWidth: 0, display: 'flow-root', position: 'relative', top: fs(-4) }}>
+                <div style={{ minWidth: 0, display: 'flow-root', position: 'relative', top: fs(-4) }}>
                   <GameSection />
                 </div>
                 {/* 한마디 — 왼쪽이 더 길면 grid 전체 너비 */}
@@ -557,6 +502,7 @@ function FormPanel({
   selectedLayout, setSelectedLayout,
   nickname, setNickname, twitterId, setTwitterId,
   subscribeFollow, toggleSubscribeFollow,
+  commentNarrow, setCommentNarrow,
   selections, toggleOption, setFieldText,
   customTitle, setCustomTitle, customValue, setCustomValue,
   spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
@@ -713,6 +659,7 @@ function FormPanel({
             ))}
           </div>
         </div>
+
         <div style={{ ...dividerStyle, margin: 0, marginBottom: '12px' }} />
 
         {/* 색상 */}
@@ -968,7 +915,32 @@ function FormPanel({
           } else {
             return (
               <div key={row.key} style={cardStyle}>
-                <label style={{ ...labelStyle, display: 'block', marginBottom: '8px', fontWeight: '600' }}>{row.title}</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <label style={{ ...labelStyle, fontWeight: '600' }}>{row.title}</label>
+                  {row.key === 'comment' && selectedLayout === 'horizontal' && (
+                    <div style={{ display: 'inline-flex', backgroundColor: '#1a1a1a', border: '1px solid #404040', borderRadius: '999px', padding: '2px' }}>
+                      {[[true, '왼쪽으로'], [false, '꽉 차게']].map(([val, lbl]) => (
+                        <button
+                          key={String(val)}
+                          type="button"
+                          onClick={() => setCommentNarrow(val)}
+                          style={{
+                            border: 'none',
+                            borderRadius: '999px',
+                            padding: '5px 12px',
+                            fontSize: '12px',
+                            fontWeight: commentNarrow === val ? '700' : '400',
+                            cursor: 'pointer',
+                            backgroundColor: commentNarrow === val ? '#ffffff' : 'transparent',
+                            color: commentNarrow === val ? '#111111' : '#888888',
+                            transition: 'all 0.15s',
+                          }}>
+                          {lbl}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {row.multiline ? (
                   <textarea value={selections[row.key]}
                     onChange={(e) => { setFieldText(row.key, e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
@@ -1066,6 +1038,7 @@ export default function Home() {
   const [nickname, setNicknameState] = useState('');
   const [twitterId, setTwitterIdState] = useState('');
   const [subscribeFollow, setSubscribeFollowState] = useState([]);
+  const [commentNarrow, setCommentNarrowState] = useState(false);
   const [customTitle, setCustomTitleState] = useState('');
   const [customValue, setCustomValueState] = useState('');
   const [selections, setSelectionsState] = useState(buildInitialSelections);
@@ -1090,6 +1063,7 @@ export default function Home() {
     const n = lsGet('rgg_nickname'); if (n) setNicknameState(n);
     const t = lsGet('rgg_twitterId'); if (t) setTwitterIdState(t);
     const sf2 = lsGet('rgg_subscribeFollow'); if (sf2) { try { setSubscribeFollowState(JSON.parse(sf2)); } catch (e) { } }
+    const cn = lsGet('rgg_commentNarrow'); if (cn) setCommentNarrowState(cn === 'true');
     const ct = lsGet('rgg_customTitle'); if (ct) setCustomTitleState(ct);
     const cv = lsGet('rgg_customValue'); if (cv) setCustomValueState(cv);
     const s = lsGet('rgg_selections'); if (s) setSelectionsState(JSON.parse(s));
@@ -1223,6 +1197,7 @@ export default function Home() {
   const setNickname = (v) => { setNicknameState(v); lsSet('rgg_nickname', v); };
   const setTwitterId = (v) => { setTwitterIdState(v); lsSet('rgg_twitterId', v); };
   const setSubscribeFollow = (v) => { setSubscribeFollowState(v); lsSet('rgg_subscribeFollow', JSON.stringify(v)); };
+  const setCommentNarrow = (v) => { setCommentNarrowState(v); lsSet('rgg_commentNarrow', String(v)); };
   const toggleSubscribeFollow = (option) => {
     setSubscribeFollow(
       (subscribeFollow || []).includes(option) ? [] : [option]
@@ -1334,6 +1309,7 @@ export default function Home() {
     setNicknameState('');
     setTwitterIdState('');
     setSubscribeFollowState([]);
+    setCommentNarrowState(false);
     setCustomTitleState('');
     setCustomValueState('');
     setSelectionsState(buildInitialSelections());
@@ -1345,7 +1321,7 @@ export default function Home() {
     LS_KEYS.forEach(lsRemove);
   }
 
-  const previewData = { nickname, twitterId, subscribeFollow, selections, spoilerValue, spoilerOther, customTitle, customValue, gameStates };
+  const previewData = { nickname, twitterId, subscribeFollow, selections, spoilerValue, spoilerOther, customTitle, customValue, gameStates, commentNarrow };
 
   const PreviewArea = (
     <div ref={previewWrapRef} style={{
@@ -1389,6 +1365,7 @@ export default function Home() {
     selectedLayout, setSelectedLayout,
     nickname, setNickname, twitterId, setTwitterId,
     subscribeFollow, toggleSubscribeFollow,
+    commentNarrow, setCommentNarrow,
     selections, toggleOption, setFieldText,
     customTitle, setCustomTitle, customValue, setCustomValue,
     spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
