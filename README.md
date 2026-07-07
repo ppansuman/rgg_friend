@@ -1,5 +1,5 @@
 # 용스튜 소개표 생성기
-![Version](https://img.shields.io/badge/version-v0.8.1-blue)
+![Version](https://img.shields.io/badge/version-v0.8.2-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 🔗 https://rgg-friend.vercel.app/
@@ -46,6 +46,10 @@
 ---
 
 ## 업데이트 내역
+
+### v0.8.2 · 2026.07.07
+- 공지부분 개선
+- 자잘한 오류 수정
 
 ### v0.8.1 · 2026.07.07
 - 스티커 핸들 개선
