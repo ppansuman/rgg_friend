@@ -45,6 +45,7 @@ function buildInitialSelections() {
 // ─── 스티커 아이템 (바운딩박스 + 핸들)
 function StickerItem({ s, cardW, selected, onMouseDown, isExporting }) {
   const handleSize = Math.max(10, cardW * 0.012);
+  const rotateHandleSize = handleSize * 1.6; // 회전 핸들만 리사이즈 핸들보다 크게
 
   const getPoint = (e) => e.touches ? e.touches[0] : e;
   const wrap = (e, id, action) => {
@@ -85,11 +86,12 @@ function StickerItem({ s, cardW, selected, onMouseDown, isExporting }) {
           <div
             onMouseDown={(e) => { e.stopPropagation(); wrap(e, s.id, 'rotate'); }}
             onTouchStart={(e) => { e.stopPropagation(); wrap(e, s.id, 'rotate'); }}
-            style={{ position: 'absolute', top: -handleSize * 2.5, left: '50%', transform: 'translateX(-50%)', width: handleSize, height: handleSize, borderRadius: '50%', backgroundColor: '#44cc88', cursor: 'grab', zIndex: 20, border: '2px solid white', touchAction: 'none' }} />
-          <div
-            onMouseDown={(e) => { e.stopPropagation(); wrap(e, s.id, 'delete'); }}
-            onTouchStart={(e) => { e.stopPropagation(); wrap(e, s.id, 'delete'); }}
-            style={{ position: 'absolute', top: -handleSize / 2, right: -handleSize * 1.8, width: handleSize * 1.4, height: handleSize * 1.4, borderRadius: '50%', backgroundColor: '#ff4444', cursor: 'pointer', zIndex: 20, border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: handleSize * 0.8, fontWeight: 'bold', lineHeight: 1, touchAction: 'none' }}>×</div>
+            style={{ position: 'absolute', top: -handleSize * 2.5 - (rotateHandleSize - handleSize) / 2, left: '50%', transform: 'translateX(-50%)', width: rotateHandleSize, height: rotateHandleSize, borderRadius: '50%', backgroundColor: '#44cc88', cursor: 'grab', zIndex: 20, border: '2px solid white', touchAction: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg viewBox="0 0 24 24" width={rotateHandleSize * 0.65} height={rotateHandleSize * 0.65} fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ pointerEvents: 'none' }}>
+              <path d="M3 12a9 9 0 1 0 3-6.7" />
+              <polyline points="3 4 3 9 8 9" />
+            </svg>
+          </div>
         </>
       )}
     </div>
@@ -548,7 +550,7 @@ function FormPanel({
   spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
   gameStates, setGameState,
   handleDownloadImage, handleResetAll,
-  stickers = [], selectedStickerId, setSelectedStickerId, handleAddSticker,
+  stickers = [], selectedStickerId, setSelectedStickerId, handleAddSticker, handleDeleteSticker, handleReorderSticker,
   isMobile,
 }) {
   const [hexInput, setHexInput] = useState(accentColor);
@@ -565,6 +567,70 @@ function FormPanel({
 
 
   const [noticeOpen, setNoticeOpen] = useState(true);
+
+  // 스티커 썸네일 드래그 재정렬: 원래 썸네일은 자리(칸)만 차지한 채 안 보이게 숨기고,
+  // 커서를 따라다니는 건 별도의 유령(ghost) 썸네일로 분리한다.
+  // → 애니메이션 없이 즉시 스냅되고, 드래그 중인 자리는 항상 빈 칸으로 남는다.
+  const thumbRefs = useRef({});
+  const ghostElRef = useRef(null);
+  const [draggingThumbId, setDraggingThumbId] = useState(null);
+  // onThumbPointerDown의 onMove는 드래그 시작 시점에 한 번만 만들어져서 클로저에 옛날 값이
+  // 갇히므로, 드래그 도중에도 항상 최신 함수를 호출하도록 ref로 감싸서 참조한다.
+  const handleReorderStickerRef = useRef(handleReorderSticker);
+  useEffect(() => { handleReorderStickerRef.current = handleReorderSticker; });
+
+  const onThumbPointerDown = (e, id) => {
+    e.preventDefault();
+    const pt = e.touches ? e.touches[0] : e;
+    const el = thumbRefs.current[id];
+    if (!el) return;
+
+    const startRect = el.getBoundingClientRect();
+    const grabOffsetX = pt.clientX - startRect.left;
+    const grabOffsetY = pt.clientY - startRect.top;
+
+    setDraggingThumbId(id);
+    // 다음 페인트에 고스트가 실제로 마운트된 후 시작 위치를 맞춰준다
+    requestAnimationFrame(() => {
+      if (ghostElRef.current) {
+        ghostElRef.current.style.left = `${startRect.left}px`;
+        ghostElRef.current.style.top = `${startRect.top}px`;
+      }
+    });
+
+    const onMove = (me) => {
+      const p = me.touches ? me.touches[0] : me;
+      if (ghostElRef.current) {
+        ghostElRef.current.style.left = `${p.clientX - grabOffsetX}px`;
+        ghostElRef.current.style.top = `${p.clientY - grabOffsetY}px`;
+      }
+      // 현재 커서가 겹쳐 있는 다른 썸네일을 찾아서, 그 자리로 즉시(애니메이션 없이) 재정렬한다
+      let hoveredId = null;
+      Object.keys(thumbRefs.current).forEach((key) => {
+        if (String(key) === String(id)) return;
+        const node = thumbRefs.current[key];
+        if (!node) return;
+        const r = node.getBoundingClientRect();
+        if (p.clientX >= r.left && p.clientX <= r.right && p.clientY >= r.top && p.clientY <= r.bottom) {
+          hoveredId = key;
+        }
+      });
+      if (hoveredId !== null) {
+        handleReorderStickerRef.current(id, Number(hoveredId));
+      }
+    };
+    const onUp = () => {
+      setDraggingThumbId(null);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  };
 
   return (
     <div style={{
@@ -746,7 +812,7 @@ function FormPanel({
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <div style={{ ...labelStyle, fontSize: '12px', color: '#808080' }}>스티커</div>
-            <span style={{ fontSize: '11px', color: '#606060' }}>PNG · 개당 500KB 이하</span>
+            <span style={{ fontSize: '11px', color: '#606060' }}>PNG · 개당 500KB 이하 · 썸네일 드래그시 순서 변경 가능</span>
           </div>
           <div style={{ marginBottom: '10px' }}>
             <button onClick={handleAddSticker}
@@ -755,15 +821,45 @@ function FormPanel({
             </button>
           </div>
           {stickers.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {stickers.map(s => (
-                <div key={s.id} onClick={() => setSelectedStickerId(s.id === selectedStickerId ? null : s.id)}
-                  style={{ width: 40, height: 40, borderRadius: '4px', border: s.id === selectedStickerId ? `2px solid ${accentColor}` : '2px solid #404040', cursor: 'pointer', overflow: 'hidden', flexShrink: 0, backgroundColor: '#1a1a1a' }}>
-                  <img src={s.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {[...stickers].reverse().map(s => (
+                <div key={s.id}
+                  ref={(el) => { if (el) thumbRefs.current[s.id] = el; else delete thumbRefs.current[s.id]; }}
+                  onMouseDown={(e) => onThumbPointerDown(e, s.id)}
+                  onTouchStart={(e) => onThumbPointerDown(e, s.id)}
+                  style={{ position: 'relative', width: 60, height: 60, flexShrink: 0, cursor: 'grab', touchAction: 'none', visibility: s.id === draggingThumbId ? 'hidden' : 'visible' }}>
+                  <div onClick={() => setSelectedStickerId(s.id === selectedStickerId ? null : s.id)}
+                    style={{ width: 60, height: 60, borderRadius: '6px', border: s.id === selectedStickerId ? `2px solid ${accentColor}` : '2px solid #404040', cursor: 'pointer', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
+                    <img src={s.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                  </div>
+                  <button
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteSticker(s.id); }}
+                    style={{
+                      position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%',
+                      backgroundColor: '#ff4444', border: '2px solid #1a1a1a', color: 'white',
+                      fontSize: '12px', fontWeight: 'bold', lineHeight: 1, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                    }}>
+                    ×
+                  </button>
                 </div>
               ))}
             </div>
           )}
+
+          {/* 드래그 중인 썸네일을 커서 그대로 따라다니는 유령(ghost) — 평소엔 숨김 */}
+          <div ref={ghostElRef} style={{
+            position: 'fixed', width: 60, height: 60, zIndex: 999, pointerEvents: 'none',
+            display: draggingThumbId != null ? 'block' : 'none',
+            borderRadius: '6px', border: `2px solid ${accentColor}`, overflow: 'hidden', backgroundColor: '#1a1a1a',
+          }}>
+            {draggingThumbId != null && (() => {
+              const dragged = stickers.find(st => st.id === draggingThumbId);
+              return dragged ? <img src={dragged.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : null;
+            })()}
+          </div>
         </div>
       </div>
 
@@ -1022,6 +1118,22 @@ export default function Home() {
     stickerFileInputRef.current?.click();
   };
 
+  const handleDeleteSticker = (id) => {
+    saveStickers(stickers.filter(s => s.id !== id));
+    if (selectedStickerId === id) setSelectedStickerId(null);
+  };
+
+  const handleReorderSticker = (draggedId, targetId) => {
+    if (draggedId === targetId) return;
+    const arr = [...stickers];
+    const fromIdx = arr.findIndex(s => s.id === draggedId);
+    const toIdx = arr.findIndex(s => s.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = arr.splice(fromIdx, 1);
+    arr.splice(toIdx, 0, moved);
+    saveStickers(arr);
+  };
+
   const handleStickerFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1049,17 +1161,30 @@ export default function Home() {
     // 브라우저별로 CSS zoom이 getBoundingClientRect에 반영되는 정도가 달라
     // rect.width를 직접 신뢰하지 않고 cardW * zoom으로 항상 동일하게 계산한다
     const displayW = cardW * zoom;
-    const cx = rect.left + displayW * (s.x / 100) + displayW * (s.width / 100) / 2;
-    const cy = rect.top + displayW * (s.y / 100) + displayW * (s.width / 100) / 2;
+    // top(Y 위치)는 CSS상 카드의 "세로 높이" 기준 %라서, 가로 기준(displayW)이 아니라
+    // 실제 렌더링된 세로 높이를 따로 기준으로 써야 한다.
+    const displayH = rect.height;
 
-    dragRef.current = { action, id, startX: e.clientX, startY: e.clientY, origS: { ...s }, cx, cy, displayW };
+    // 리사이즈 시 중앙을 기준으로 줄어들도록, 이미지의 세로/가로 비율을 미리 구해둔다
+    let aspect = 1;
+    const imgEl = document.querySelector(`[data-sticker-id="${id}"] img`);
+    if (imgEl && imgEl.naturalWidth && imgEl.naturalHeight) {
+      aspect = imgEl.naturalHeight / imgEl.naturalWidth;
+    }
+
+    const widthPx = displayW * (s.width / 100);
+    const heightPx = widthPx * aspect;
+    const cx = rect.left + displayW * (s.x / 100) + widthPx / 2;
+    const cy = rect.top + displayH * (s.y / 100) + heightPx / 2;
+
+    dragRef.current = { action, id, startX: e.clientX, startY: e.clientY, origS: { ...s }, cx, cy, displayW, displayH, aspect };
 
     const onMove = (me) => {
       if (!dragRef.current) return;
-      const { action, origS, startX, startY, displayW, cx, cy } = dragRef.current;
+      const { action, origS, startX, startY, displayW, displayH, cx, cy, aspect } = dragRef.current;
       const pt = me.touches ? me.touches[0] : me;
       const dxPct = (pt.clientX - startX) / displayW * 100;
-      const dyPct = (pt.clientY - startY) / displayW * 100;
+      const dyPct = (pt.clientY - startY) / displayH * 100; // top(Y)은 세로 높이 기준 %로 계산
 
       setStickers(prev => prev.map(st => {
         if (st.id !== id) return st;
@@ -1073,8 +1198,25 @@ export default function Home() {
           return { ...st, rotation: Math.round(angle + 90) };
         }
         if (action.startsWith('resize')) {
-          const dw = action.includes('e') ? dxPct : -dxPct;
-          return { ...st, width: Math.max(3, Math.min(100, origS.width + dw)) };
+          const dir = action.split('-')[1]; // 'nw' | 'ne' | 'sw' | 'se'
+          // 참고: action 문자열이 'resize-xx' 형태라 "resize" 자체에 'e'가 포함돼 있어서
+          // action.includes('e')로는 방향 판별이 안 됨(항상 true). dir의 마지막 글자로 판별해야 함.
+          const isEast = dir[1] === 'e';
+          const dw = isEast ? dxPct : -dxPct; // 가로 기준 %
+          const newWidth = Math.max(3, Math.min(100, origS.width + dw));
+          const actualDw = newWidth - origS.width; // 클램프된 만큼만 보정에 반영 (가로 기준 %)
+          const dwPx = (actualDw / 100) * displayW; // 실제 가로 px 변화량
+          const dhPx = dwPx * aspect; // 실제 세로 px 변화량 (종횡비 유지)
+          const dhPct = (dhPx / displayH) * 100; // top 보정에 쓸 세로 기준 %로 환산
+
+          // 대각선 반대쪽 모서리가 고정되도록: 서쪽(w) 핸들이면 오른쪽 가장자리를,
+          // 북쪽(n) 핸들이면 아래쪽 가장자리를 고정한다.
+          let newX = origS.x;
+          let newY = origS.y;
+          if (dir[1] === 'w') newX = origS.x - actualDw;
+          if (dir[0] === 'n') newY = origS.y - dhPct;
+
+          return { ...st, width: newWidth, x: newX, y: newY };
         }
         return st;
       }));
@@ -1267,7 +1409,7 @@ export default function Home() {
     spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
     gameStates, setGameState,
     handleDownloadImage, handleResetAll,
-    stickers, selectedStickerId, setSelectedStickerId, handleAddSticker,
+    stickers, selectedStickerId, setSelectedStickerId, handleAddSticker, handleDeleteSticker, handleReorderSticker,
     isMobile,
   };
 
