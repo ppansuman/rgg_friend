@@ -1,5 +1,5 @@
 # 용스튜 소개표 생성기
-![Version](https://img.shields.io/badge/version-v0.8.0-blue)
+![Version](https://img.shields.io/badge/version-v0.8.1-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 🔗 https://rgg-friend.vercel.app/
@@ -46,6 +46,11 @@
 ---
 
 ## 업데이트 내역
+
+### v0.8.1 · 2026.07.07
+- 스티커 핸들 개선
+- 스티커 삭제버튼 썸네일에 할당
+- 스티커 썸네일 드래그시 순서 변경 가능
 
 ### v0.8.0 · 2026.07.06
 - 가로형 이미지 제공
