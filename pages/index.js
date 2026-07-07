@@ -6,13 +6,14 @@ import { version, lastUpdated } from '../package.json';
 import {
   ROWS, IMAGE_SIZE, GAME_STATES, GAME_STATE_LABELS,
   GAME_STATE_GROUPS, GAMES, SITE_URL, DEFAULT_ACCENT, LS_KEYS, FAMILY_ICONS,
-  SUBSCRIBE_OPTIONS,
+  SUBSCRIBE_OPTIONS, FONT_OPTIONS, LAYOUT_OPTIONS, BG_COLOR_PRESETS, ACCENT_PRESETS,
+  STICKER_MAX_SIZE_BYTES,
 } from '../lib/constants';
 
 import {
   cardStyle, labelStyle, inputStyle, h2Style, h3Style,
   guideStyle, linkStyle, footerTextStyle, getBadgeStyle,
-  getLuminance, getTextOnAccent, darkenHex,
+  getLuminance, getTextOnAccent, darkenHex, subLabelStyle, dividerStyle,
 } from '../lib/styles';
 
 function lsGet(key) {
@@ -42,10 +43,10 @@ function buildInitialSelections() {
 }
 
 
-// ─── 스티커 아이템 (바운딩박스 + 핸들)
+// ─── 스티커 아이템 ───
 function StickerItem({ s, cardW, selected, onMouseDown, isExporting }) {
   const handleSize = Math.max(10, cardW * 0.012);
-  const rotateHandleSize = handleSize * 1.6; // 회전 핸들만 리사이즈 핸들보다 크게
+  const rotateHandleSize = handleSize * 1.6;
 
   const getPoint = (e) => e.touches ? e.touches[0] : e;
   const wrap = (e, id, action) => {
@@ -120,7 +121,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
 
   const leftItemsRef = useRef(null);
   const rightColRef = useRef(null);
-  const [commentPlacement, setCommentPlacement] = useState('left'); // 'left' | 'full'
+  const [commentPlacement, setCommentPlacement] = useState('left');
 
   useLayoutEffect(() => {
     if (!isHorizontal) return undefined;
@@ -149,9 +150,6 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
         return;
       }
 
-      // 오른쪽: 그룹(완료/플레이중/구매완료)별로 각각 줄 수를 센 뒤 합산한다.
-      // 완료는 단독으로 쌓이고, 플레이중/구매완료는 나란히(병렬로) 배치되므로
-      // 그 둘은 더하지 않고 더 긴 쪽(max)만 반영한다.
       const countRowsIn = (state) => {
         const container = rightColRef.current.querySelector(`[data-group-state="${state}"]`);
         if (!container) return 0;
@@ -163,16 +161,14 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
       const purchasedRows = countRowsIn('구매완료');
       const badgeRows = completeRows + Math.max(playingRows, purchasedRows);
 
-      // 그룹 제목(플레이 완료/플레이 중/구매 완료)도 한 줄만큼의 무게로 취급한다.
       const rightWeight = badgeRows + selectedGroupCount;
 
-      // 왼쪽: 실제 렌더링된 줄 수(뱃지 줄바꿈 포함)를 그대로 센다.
       const leftRows = countRowsOf(leftItemsRef.current.querySelectorAll('[data-left-item]'));
 
       setCommentPlacement(leftRows >= rightWeight ? 'full' : 'left');
     };
 
-    measure(); // 페인트 전에 즉시 계산 → 깜빡임/점프 없음
+    measure();
 
     if (typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(measure);
@@ -231,7 +227,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     if (selected.length === 0) return null;
     const otherText = selections[row.key + 'Other'] || '';
     const hasOtherOnly = selected.length === 1 && selected[0] === '기타';
-    const hasOtherBadges = selected.length > 1; // 기타 외 다른 뱃지가 함께 있는지
+    const hasOtherBadges = selected.length > 1;
     const otherFontSize = hasOtherBadges ? 10 : 13;
     return (
       <div key={row.key} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: fs(9) }}>
@@ -508,7 +504,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
             );
           })()
         ) : (
-          /* ─── 세로형 레이아웃 (기존) ─── */
+          /* ─── 세로형 레이아웃 (디폴트) ─── */
           <>
             {ROWS.map((row) => {
               if (row.type === 'option') return renderOptionRow(row);
@@ -535,7 +531,23 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   );
 }
 
-// ─── 폼 패널
+// ─── 폼 패널 ───
+const Hashtag = ({ tag }) => {
+  const [hover, setHover] = useState(false);
+  return (
+    <a
+      href={`https://twitter.com/search?q=${encodeURIComponent(tag)}&src=typed_query`}
+      target="_blank"
+      rel="noopener noreferrer"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ color: hover ? '#1a7bc4' : '#1d9bf0', textDecoration: 'none', fontWeight: 600 }}
+    >
+      {tag}
+    </a>
+  );
+};
+
 function FormPanel({
   accentColor, setAccentColor,
   bgColor, setBgColor,
@@ -568,14 +580,9 @@ function FormPanel({
 
   const [noticeOpen, setNoticeOpen] = useState(true);
 
-  // 스티커 썸네일 드래그 재정렬: 원래 썸네일은 자리(칸)만 차지한 채 안 보이게 숨기고,
-  // 커서를 따라다니는 건 별도의 유령(ghost) 썸네일로 분리한다.
-  // → 애니메이션 없이 즉시 스냅되고, 드래그 중인 자리는 항상 빈 칸으로 남는다.
   const thumbRefs = useRef({});
   const ghostElRef = useRef(null);
   const [draggingThumbId, setDraggingThumbId] = useState(null);
-  // onThumbPointerDown의 onMove는 드래그 시작 시점에 한 번만 만들어져서 클로저에 옛날 값이
-  // 갇히므로, 드래그 도중에도 항상 최신 함수를 호출하도록 ref로 감싸서 참조한다.
   const handleReorderStickerRef = useRef(handleReorderSticker);
   useEffect(() => { handleReorderStickerRef.current = handleReorderSticker; });
 
@@ -590,7 +597,6 @@ function FormPanel({
     const grabOffsetY = pt.clientY - startRect.top;
 
     setDraggingThumbId(id);
-    // 다음 페인트에 고스트가 실제로 마운트된 후 시작 위치를 맞춰준다
     requestAnimationFrame(() => {
       if (ghostElRef.current) {
         ghostElRef.current.style.left = `${startRect.left}px`;
@@ -604,7 +610,6 @@ function FormPanel({
         ghostElRef.current.style.left = `${p.clientX - grabOffsetX}px`;
         ghostElRef.current.style.top = `${p.clientY - grabOffsetY}px`;
       }
-      // 현재 커서가 겹쳐 있는 다른 썸네일을 찾아서, 그 자리로 즉시(애니메이션 없이) 재정렬한다
       let hoveredId = null;
       Object.keys(thumbRefs.current).forEach((key) => {
         if (String(key) === String(id)) return;
@@ -649,7 +654,7 @@ function FormPanel({
               용스튜 소개표 생성기 <span style={{ fontSize: '11px', fontWeight: '400', color: '#888888', marginLeft: '6px' }}>v{version}</span>
             </div>
             <div style={{ fontSize: '11px', color: '#bdbdbd' }}>
-              #용스튜_트친소 #용과같이_트친소 #저지아이즈_트친소
+              <Hashtag tag="#용스튜_트친소" /> <Hashtag tag="#용과같이_트친소" /> <Hashtag tag="#저지아이즈_트친소" />
             </div>
           </div>
           <button
@@ -660,7 +665,12 @@ function FormPanel({
           </button>
         </div>
         {/* 접히는 내용 */}
-        {noticeOpen && (
+        <div style={{
+          maxHeight: noticeOpen ? '600px' : '0px',
+          opacity: noticeOpen ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 300ms ease, opacity 250ms ease',
+        }}>
           <div style={{ borderTop: '1px solid rgba(64,64,64,0.5)', paddingTop: '4px' }}>
 
             <p style={{ ...guideStyle, paddingTop: 8 }}>RGG Studio 게임 유저들을 위한 트친소/소개표/성향표 생성기입니다.</p>
@@ -674,10 +684,10 @@ function FormPanel({
 
             <p style={{ ...guideStyle, paddingTop: 12 }}>PC와 모바일 모두 구글 크롬을 기준으로 제작되었으며,</p>
             <p style={guideStyle}>X(트위터) 인앱 브라우저에서 잘 작동되지 않을 수 있습니다.</p>
-            <p style={{ ...guideStyle, paddingTop: 8 }}>오류나 건의 제보: <b>#용스튜소개표_제보</b> 또는 하단 메일 주소로 제보</p>
+            <p style={{ ...guideStyle, paddingTop: 8 }}>오류나 건의 제보: <Hashtag tag="#용스튜소개표_제보" /> 또는 하단 메일 주소로 제보</p>
             <p style={guideStyle}>업데이트 내역은 하단 GitHub 링크의 Readme 참고</p>
           </div>
-        )}
+        </div>
       </div>
 
       {/* 스타일 */}
@@ -686,9 +696,9 @@ function FormPanel({
 
         {/* 레이아웃 */}
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ ...labelStyle, fontSize: '12px', color: '#808080', marginBottom: '8px' }}>레이아웃</div>
+          <div style={{ ...subLabelStyle, marginBottom: '8px' }}>레이아웃</div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            {[['vertical', '세로'], ['horizontal', '가로']].map(([val, lbl]) => (
+            {LAYOUT_OPTIONS.map(([val, lbl]) => (
               <label key={val} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: selectedLayout === val ? '#ffffff' : '#b0b0b0' }}>
                 <input
                   type="radio"
@@ -703,29 +713,22 @@ function FormPanel({
             ))}
           </div>
         </div>
-        <div style={{ height: '1px', backgroundColor: '#404040', marginBottom: '12px' }} />
+        <div style={{ ...dividerStyle, margin: 0, marginBottom: '12px' }} />
 
         {/* 색상 */}
         <div style={{ marginBottom: colorCustomOpen ? '16px' : '12px' }}>
-          <div style={{ ...labelStyle, fontSize: '12px', color: '#808080', marginBottom: '10px' }}>색상</div>
+          <div style={{ ...subLabelStyle, marginBottom: '10px' }}>색상</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: colorCustomOpen ? '12px' : '0', flexWrap: 'wrap' }}>
             <div>
               <div style={{ ...labelStyle, fontSize: '11px', color: '#808080', marginBottom: '6px' }}>배경</div>
               <div style={{ display: 'flex', gap: '6px' }}>
-                {[
-                  ['#ffffff', '밝은 배경', '3px solid #cccccc'],
-                  ['#1a1a1a', '어두운 배경', '3px solid #555555'],
-                ].map(([color, title, selBorder]) => (
+                {BG_COLOR_PRESETS.map(([color, title, selBorder]) => (
                   <button key={color} onClick={() => {
                     setBgColor(color);
                     setBadgeTextCustom(color === '#1a1a1a' ? '#ebebeb' : '#1a1a1a');
                     if (!colorCustomOpen) {
-                      const lightPresets = ['#e29898', '#cab366', '#6ca3e1', '#8ac2a3'];
-                      const darkPresets = ['#7b4747', '#7b692d', '#2a4f79', '#3c7260'];
-                      const lightIdx = lightPresets.indexOf(accentColor);
-                      const darkIdx = darkPresets.indexOf(accentColor);
-                      if (color === '#1a1a1a' && lightIdx !== -1) setAccentColor(darkPresets[lightIdx]);
-                      if (color === '#ffffff' && darkIdx !== -1) setAccentColor(lightPresets[darkIdx]);
+                      const preset = ACCENT_PRESETS.find(p => p.light === accentColor || p.dark === accentColor);
+                      if (preset) setAccentColor(color === '#1a1a1a' ? preset.dark : preset.light);
                     }
                   }} title={title}
                     style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: bgColor === color ? selBorder : '2px solid transparent', outline: bgColor === color ? '2px solid #888' : 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }} />
@@ -736,13 +739,13 @@ function FormPanel({
             <div>
               <div style={{ ...labelStyle, fontSize: '11px', color: '#808080', marginBottom: '6px' }}>포인트컬러</div>
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                {(bgColor === '#1a1a1a'
-                  ? [['#7b4747', '동성회'], ['#7b692d', '오미연합'], ['#2a4f79', '경찰'], ['#3c7260', '변호사']]
-                  : [['#e29898', '동성회'], ['#cab366', '오미연합'], ['#6ca3e1', '경찰'], ['#8ac2a3', '변호사']]
-                ).map(([color, title]) => (
-                  <button key={color} onClick={() => { setAccentColor(color); setColorCustomOpen(false); setBadgeTextCustom(bgColor === '#1a1a1a' ? '#ebebeb' : '#1a1a1a'); }} title={title}
-                    style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: accentColor === color && !colorCustomOpen ? '3px solid #ffffff' : '2px solid transparent', outline: accentColor === color && !colorCustomOpen ? `2px solid ${color}` : 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'all 0.15s' }} />
-                ))}
+                {ACCENT_PRESETS.map(({ light, dark, label: title }) => {
+                  const color = bgColor === '#1a1a1a' ? dark : light;
+                  return (
+                    <button key={color} onClick={() => { setAccentColor(color); setColorCustomOpen(false); setBadgeTextCustom(bgColor === '#1a1a1a' ? '#ebebeb' : '#1a1a1a'); }} title={title}
+                      style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: accentColor === color && !colorCustomOpen ? '3px solid #ffffff' : '2px solid transparent', outline: accentColor === color && !colorCustomOpen ? `2px solid ${color}` : 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'all 0.15s' }} />
+                  );
+                })}
                 <button
                   onClick={() => {
                     const next = !colorCustomOpen;
@@ -783,35 +786,28 @@ function FormPanel({
         </div>
 
         {/* 구분선 */}
-        <div style={{ height: '1px', backgroundColor: '#404040', marginBottom: '12px' }} />
+        <div style={{ ...dividerStyle, margin: 0, marginBottom: '12px' }} />
 
         {/* 폰트 */}
         <div>
-          <div style={{ ...labelStyle, fontSize: '12px', color: '#808080', marginBottom: '8px' }}>폰트</div>
+          <div style={{ ...subLabelStyle, marginBottom: '8px' }}>폰트</div>
           <select
             value={selectedFont}
             onChange={(e) => setSelectedFont(e.target.value)}
             suppressHydrationWarning
             style={{ ...inputStyle, cursor: 'pointer' }}
           >
-            {[
-              { value: 'Pretendard', label: 'Pretendard (기본)' },
-              { value: "'JoseonGulim', sans-serif", label: '조선굴림체' },
-              { value: "'MaruBuri', serif", label: '마루 부리' },
-              { value: "'ChosunIlboMyungjo', serif", label: '조선일보명조체' },
-              { value: "'KyoboHandwriting2019', sans-serif", label: '교보손글씨 2019' },
-              { value: "'Galmuri11', sans-serif", label: '갈무리11' },
-            ].map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+            {FONT_OPTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
           </select>
         </div>
 
         {/* 구분선 */}
-        <div style={{ height: '1px', backgroundColor: '#404040', margin: '12px 0' }} />
+        <div style={dividerStyle} />
 
         {/* 스티커 */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-            <div style={{ ...labelStyle, fontSize: '12px', color: '#808080' }}>스티커</div>
+            <div style={{ ...subLabelStyle }}>스티커</div>
             <span style={{ fontSize: '11px', color: '#606060' }}>PNG · 개당 500KB 이하 · 썸네일 드래그시 순서 변경 가능</span>
           </div>
           <div style={{ marginBottom: '10px' }}>
@@ -849,7 +845,7 @@ function FormPanel({
             </div>
           )}
 
-          {/* 드래그 중인 썸네일을 커서 그대로 따라다니는 유령(ghost) — 평소엔 숨김 */}
+          {/* 드래그 고스트 */}
           <div ref={ghostElRef} style={{
             position: 'fixed', width: 60, height: 60, zIndex: 999, pointerEvents: 'none',
             display: draggingThumbId != null ? 'block' : 'none',
@@ -882,7 +878,7 @@ function FormPanel({
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginTop: '12px' }}>
           {/* 소속 아이콘 */}
           <div>
-            <label style={{ ...labelStyle, display: 'block', marginBottom: '6px', fontSize: '12px', color: '#808080' }}>소속 아이콘</label>
+            <label style={{ ...subLabelStyle, display: 'block', marginBottom: '6px' }}>소속 아이콘</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {familyIcon && familyIcon !== 'none' && (
                 <img src={(() => { const ic = FAMILY_ICONS.find(f => f.key === familyIcon); return (ic?.srcDark || ic?.src) || ''; })()} alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
@@ -901,7 +897,7 @@ function FormPanel({
           </div>
           {/* 구독 및 팔로우 */}
           <div>
-            <label style={{ ...labelStyle, display: 'block', marginBottom: '6px', paddingTop: '2px', fontSize: '12px', color: '#808080' }}>구독 및 팔로우</label>
+            <label style={{ ...subLabelStyle, display: 'block', marginBottom: '6px', paddingTop: '2px' }}>구독 및 팔로우</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {SUBSCRIBE_OPTIONS.map((option) => (
                 <button key={option} onClick={() => toggleSubscribeFollow(option)}
@@ -1050,7 +1046,7 @@ function FormPanel({
   );
 }
 
-// ─── 메인 
+// ─── 메인 ───
 export default function Home() {
   const previewRef = useRef(null);
   const previewWrapRef = useRef(null);
@@ -1137,7 +1133,7 @@ export default function Home() {
   const handleStickerFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 500 * 1024) { alert('이미지는 500KB 이하만 가능합니다.'); return; }
+    if (file.size > STICKER_MAX_SIZE_BYTES) { alert('이미지는 500KB 이하만 가능합니다.'); return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const newS = { id: Date.now(), src: ev.target.result, x: 30, y: 10, width: 20, rotation: 0, layer: stickerLayer };
@@ -1150,7 +1146,6 @@ export default function Home() {
   };
 
   const handleStickerMouseDown = (e, id, action) => {
-    if (action === 'delete') { saveStickers(stickers.filter(s => s.id !== id)); setSelectedStickerId(null); return; }
     e.preventDefault();
     e.stopPropagation();
     setSelectedStickerId(id);
@@ -1158,14 +1153,9 @@ export default function Home() {
     if (!s || !previewInnerRef.current) return;
 
     const rect = previewInnerRef.current.getBoundingClientRect();
-    // 브라우저별로 CSS zoom이 getBoundingClientRect에 반영되는 정도가 달라
-    // rect.width를 직접 신뢰하지 않고 cardW * zoom으로 항상 동일하게 계산한다
     const displayW = cardW * zoom;
-    // top(Y 위치)는 CSS상 카드의 "세로 높이" 기준 %라서, 가로 기준(displayW)이 아니라
-    // 실제 렌더링된 세로 높이를 따로 기준으로 써야 한다.
     const displayH = rect.height;
 
-    // 리사이즈 시 중앙을 기준으로 줄어들도록, 이미지의 세로/가로 비율을 미리 구해둔다
     let aspect = 1;
     const imgEl = document.querySelector(`[data-sticker-id="${id}"] img`);
     if (imgEl && imgEl.naturalWidth && imgEl.naturalHeight) {
@@ -1184,7 +1174,7 @@ export default function Home() {
       const { action, origS, startX, startY, displayW, displayH, cx, cy, aspect } = dragRef.current;
       const pt = me.touches ? me.touches[0] : me;
       const dxPct = (pt.clientX - startX) / displayW * 100;
-      const dyPct = (pt.clientY - startY) / displayH * 100; // top(Y)은 세로 높이 기준 %로 계산
+      const dyPct = (pt.clientY - startY) / displayH * 100;
 
       setStickers(prev => prev.map(st => {
         if (st.id !== id) return st;
@@ -1198,19 +1188,15 @@ export default function Home() {
           return { ...st, rotation: Math.round(angle + 90) };
         }
         if (action.startsWith('resize')) {
-          const dir = action.split('-')[1]; // 'nw' | 'ne' | 'sw' | 'se'
-          // 참고: action 문자열이 'resize-xx' 형태라 "resize" 자체에 'e'가 포함돼 있어서
-          // action.includes('e')로는 방향 판별이 안 됨(항상 true). dir의 마지막 글자로 판별해야 함.
+          const dir = action.split('-')[1];
           const isEast = dir[1] === 'e';
-          const dw = isEast ? dxPct : -dxPct; // 가로 기준 %
+          const dw = isEast ? dxPct : -dxPct;
           const newWidth = Math.max(3, Math.min(100, origS.width + dw));
-          const actualDw = newWidth - origS.width; // 클램프된 만큼만 보정에 반영 (가로 기준 %)
-          const dwPx = (actualDw / 100) * displayW; // 실제 가로 px 변화량
-          const dhPx = dwPx * aspect; // 실제 세로 px 변화량 (종횡비 유지)
-          const dhPct = (dhPx / displayH) * 100; // top 보정에 쓸 세로 기준 %로 환산
+          const actualDw = newWidth - origS.width;
+          const dwPx = (actualDw / 100) * displayW;
+          const dhPx = dwPx * aspect;
+          const dhPct = (dhPx / displayH) * 100;
 
-          // 대각선 반대쪽 모서리가 고정되도록: 서쪽(w) 핸들이면 오른쪽 가장자리를,
-          // 북쪽(n) 핸들이면 아래쪽 가장자리를 고정한다.
           let newX = origS.x;
           let newY = origS.y;
           if (dir[1] === 'w') newX = origS.x - actualDw;
@@ -1238,7 +1224,6 @@ export default function Home() {
   const setTwitterId = (v) => { setTwitterIdState(v); lsSet('rgg_twitterId', v); };
   const setSubscribeFollow = (v) => { setSubscribeFollowState(v); lsSet('rgg_subscribeFollow', JSON.stringify(v)); };
   const toggleSubscribeFollow = (option) => {
-    // FUB FREE / MUTUALS ONLY는 서로 배타적: 하나만 선택되거나 둘 다 선택 안 될 수 있음
     setSubscribeFollow(
       (subscribeFollow || []).includes(option) ? [] : [option]
     );
@@ -1381,7 +1366,7 @@ export default function Home() {
       <div ref={previewRef} style={{ position: 'fixed', left: '-9999px', top: 0, width: `${cardW}px`, pointerEvents: 'none', zIndex: -1 }}>
         <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} isExporting={true} />
       </div>
-      {/* 미리보기 — zoom 적용 */}
+      {/* 미리보기 */}
       <div ref={previewInnerRef} data-preview-inner style={{
         zoom: zoom,
         borderRadius: `${8 / zoom}px`,
@@ -1435,7 +1420,7 @@ export default function Home() {
 
       <div style={{ backgroundColor: '#151515', color: '#e0e0e0' }}>
         {isMobile ? (
-          /* 모바일: 이미지 상단, 폼 아래 — 전체 스크롤 (이미지도 같이 올라감) */
+          /* 모바일 레이아웃 */
           <div style={{ minHeight: '100vh' }}>
             {PreviewArea}
             <div style={{ maxWidth: '480px', margin: '0 auto', width: '100%' }}>
@@ -1443,7 +1428,7 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          /* 데스크탑: 이미지 왼쪽 최대 50%, 폼 오른쪽 */
+          /* 데스크탑 레이아웃 */
           <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
             {/* 왼쪽: 이미지 — 남은 공간 모두 */}
             <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
