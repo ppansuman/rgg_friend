@@ -1,5 +1,5 @@
 # 용스튜 소개표 생성기
-![Version](https://img.shields.io/badge/version-v0.8.2-blue)
+![Version](https://img.shields.io/badge/version-v0.8.3-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 🔗 https://rgg-friend.vercel.app/
@@ -22,7 +22,7 @@
 
 ## 제작자
 
-**ppansuman 빤수맨**
+**ppansuman 빤수맨(panchu)**
 
 - X(Twitter): https://x.com/ppansuman
 - Email: ppanusman@gmail.com
