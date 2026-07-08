@@ -7,7 +7,7 @@ import {
   ROWS, IMAGE_SIZE, GAME_STATES, GAME_STATE_LABELS,
   GAME_STATE_GROUPS, GAMES, SITE_URL, DEFAULT_ACCENT, LS_KEYS, FAMILY_ICONS,
   SUBSCRIBE_OPTIONS, FONT_OPTIONS, LAYOUT_OPTIONS, BG_COLOR_PRESETS, ACCENT_PRESETS,
-  STICKER_MAX_SIZE_BYTES,
+  STICKER_MAX_SIZE_BYTES, HEADER_IMAGE_MAX_SIZE_BYTES, HEADER_IMAGE_DEFAULT,
 } from '../lib/constants';
 
 import {
@@ -43,7 +43,7 @@ function buildInitialSelections() {
 }
 
 
-// ─── 스티커 아이템 ───
+// ─── 스티커 ───
 function StickerItem({ s, cardW, selected, onMouseDown, isExporting }) {
   const handleSize = Math.max(10, cardW * 0.012);
   const rotateHandleSize = handleSize * 1.6;
@@ -103,7 +103,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const {
     nickname, twitterId, subscribeFollow,
     selections, spoilerValue, spoilerOther,
-    customTitle, customValue, gameStates, commentNarrow,
+    customTitle, customValue, gameStates, commentNarrow, headerImage,
   } = data;
 
   const isHorizontal = layout === 'horizontal';
@@ -119,7 +119,6 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const FONT_SCALE = isHorizontal ? (cardW / 900) : (cardW / 620);
   const fs = (n) => px(Math.round(n * FONT_SCALE));
 
-  // 가로형에서 한마디란을 꽉 차게 할지 왼쪽으로 좁힐지는 사용자가 직접 토글로 선택한다
   const commentPlacement = commentNarrow ? 'left' : 'full';
 
   const textColor = getLuminance(bgColor) > 128 ? '#1a1a1a' : '#ebebeb';
@@ -324,6 +323,34 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
       {stickers.filter(s => s.layer === 'below').map(s => (
         <StickerItem key={s.id} s={s} cardW={cardW} selected={!isExporting && selectedStickerId === s.id} onMouseDown={onStickerMouseDown} isExporting={isExporting} />
       ))}
+      {headerImage && (() => {
+        const safeHeader = clampHeaderImageOffset(headerImage);
+        const hFrameAspect = 4;
+        const hAspect = safeHeader.aspect || hFrameAspect;
+        const hrw = Math.max(1, hAspect / hFrameAspect);
+        const hrh = Math.max(1, hFrameAspect / hAspect);
+        const hFrameW = cardW;
+        const hFrameH = cardW / hFrameAspect;
+        const hImgW = hFrameW * hrw * safeHeader.zoom;
+        const hImgH = hFrameH * hrh * safeHeader.zoom;
+        const hOffX = (safeHeader.offsetXPct / 100) * hFrameW;
+        const hOffY = (safeHeader.offsetYPct / 100) * hFrameH;
+        return (
+          <div style={{ width: '100%', height: px(hFrameH), overflow: 'hidden', position: 'relative' }}>
+            <img
+              src={safeHeader.src}
+              alt=""
+              style={{
+                position: 'absolute', left: '50%', top: '50%',
+                width: `${hImgW}px`, height: `${hImgH}px`,
+                maxWidth: 'none', maxHeight: 'none',
+                transform: `translate(-50%, -50%) translate(${hOffX}px, ${hOffY}px) rotate(${safeHeader.rotation}deg)`,
+                transformOrigin: 'center center',
+              }}
+            />
+          </div>
+        );
+      })()}
       <div style={{ padding: padding, paddingBottom: fs(10), paddingTop: fs(15), position: 'relative', zIndex: 2 }}>
         {/* 헤더 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: fs(20), alignItems: 'flex-end', marginBottom: sectionGap }}>
@@ -477,6 +504,38 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
 }
 
 // ─── 폼 패널 ───
+function getMinZoomForRotation(rw, rh, rotationDeg) {
+  const FW = 4, FH = 1;
+  const theta = Math.abs(rotationDeg) * Math.PI / 180;
+  const cos = Math.abs(Math.cos(theta));
+  const sin = Math.abs(Math.sin(theta));
+  const dispW0 = FW * rw;
+  const dispH0 = FH * rh;
+  const needW = FW * cos + FH * sin;
+  const needH = FW * sin + FH * cos;
+  return Math.max(1, needW / dispW0, needH / dispH0);
+}
+
+function clampHeaderImageOffset(draft) {
+  const frameAspect = 4;
+  const aspect = draft.aspect || frameAspect;
+  const rw = Math.max(1, aspect / frameAspect);
+  const rh = Math.max(1, frameAspect / aspect);
+
+  const zMin = getMinZoomForRotation(rw, rh, draft.rotation || 0);
+  const zoom = Math.max(draft.zoom, zMin);
+  const ratio = zoom / zMin;
+
+  const maxX = Math.max(0, ((rw * ratio - 1) / 2) * 100);
+  const maxY = Math.max(0, ((rh * ratio - 1) / 2) * 100);
+  return {
+    ...draft,
+    zoom,
+    offsetXPct: Math.max(-maxX, Math.min(maxX, draft.offsetXPct)),
+    offsetYPct: Math.max(-maxY, Math.min(maxY, draft.offsetYPct)),
+  };
+}
+
 const Hashtag = ({ tag }) => {
   const [hover, setHover] = useState(false);
   return (
@@ -493,6 +552,170 @@ const Hashtag = ({ tag }) => {
   );
 };
 
+// ─── 헤더 이미지 편집 모달 ───
+function HeaderImageEditorModal({ draft, onChange, onCancel, onApply, onReset, accentColor }) {
+  const canvasRef = useRef(null);
+  const frameRef = useRef(null);
+  const dragRef = useRef(null);
+  const [frameSize, setFrameSize] = useState({ width: 300, height: 100 });
+
+  useEffect(() => {
+    const measure = () => {
+      if (frameRef.current) {
+        const r = frameRef.current.getBoundingClientRect();
+        setFrameSize({ width: r.width, height: r.height });
+      }
+    };
+    measure();
+    window.addEventListener('resize', measure);
+
+    let ro;
+    if (frameRef.current && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(measure);
+      ro.observe(frameRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      if (ro) ro.disconnect();
+    };
+  }, []);
+
+  const onCanvasMouseDown = (e) => {
+    const pt = e.touches ? e.touches[0] : e;
+    dragRef.current = {
+      startX: pt.clientX, startY: pt.clientY,
+      startOffsetXPct: draft.offsetXPct, startOffsetYPct: draft.offsetYPct,
+    };
+    const onMove = (me) => {
+      if (!dragRef.current || !frameSize.width) return;
+      const p = me.touches ? me.touches[0] : me;
+      const dxPct = ((p.clientX - dragRef.current.startX) / frameSize.width) * 100;
+      const dyPct = ((p.clientY - dragRef.current.startY) / frameSize.height) * 100;
+      onChange(clampHeaderImageOffset({
+        ...draft,
+        offsetXPct: dragRef.current.startOffsetXPct + dxPct,
+        offsetYPct: dragRef.current.startOffsetYPct + dyPct,
+      }));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  };
+
+  const handleZoomChange = (v) => {
+    onChange(clampHeaderImageOffset({ ...draft, zoom: v }));
+  };
+
+  const frameAspect = 4;
+  const aspect = draft.aspect || frameAspect;
+  const rw = Math.max(1, aspect / frameAspect);
+  const rh = Math.max(1, frameAspect / aspect);
+  const imgWidthPx = frameSize.width * rw * draft.zoom;
+  const imgHeightPx = frameSize.height * rh * draft.zoom;
+  const offsetXPx = (draft.offsetXPct / 100) * frameSize.width;
+  const offsetYPx = (draft.offsetYPct / 100) * frameSize.height;
+
+  const zMinNow = getMinZoomForRotation(rw, rh, draft.rotation || 0);
+  const stepZoom = (delta) => handleZoomChange(Math.max(zMinNow, Math.min(5, draft.zoom + delta)));
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ backgroundColor: '#151515', border: '1px solid #333', borderRadius: '10px', width: '100%', maxWidth: '460px', overflow: 'hidden' }}>
+        {/* 상단 바: 뒤로가기 / 제목 / 적용 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
+          <button onClick={onCancel} aria-label="취소" style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px', display: 'flex' }}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
+          </button>
+          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>이미지 영역 설정</h3>
+          <button onClick={onApply} style={{ backgroundColor: '#f0f0f0', border: 'none', borderRadius: '999px', color: '#111111', fontSize: '13px', fontWeight: '700', cursor: 'pointer', padding: '7px 16px' }}>
+            적용
+          </button>
+        </div>
+
+        {/* 편집 캔버스: 이미지 전체가 다 보이고, 실제 크롭 영역(프레임)만 밝게 표시 */}
+        <div
+          ref={canvasRef}
+          onMouseDown={onCanvasMouseDown}
+          onTouchStart={onCanvasMouseDown}
+          style={{ width: '100%', aspectRatio: '4 / 3', position: 'relative', overflow: 'hidden', cursor: 'grab', touchAction: 'none', backgroundColor: '#000' }}
+        >
+          <img
+            src={draft.src}
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: '50%', top: '50%',
+              width: `${imgWidthPx}px`, height: `${imgHeightPx}px`,
+              maxWidth: 'none', maxHeight: 'none',
+              transform: `translate(-50%, -50%) translate(${offsetXPx}px, ${offsetYPx}px) rotate(${draft.rotation}deg)`,
+              transformOrigin: 'center center',
+              pointerEvents: 'none',
+            }}
+          />
+          {/* 프레임(실제 결과물 영역) — 바깥은 어둡게, 안쪽만 밝게 */}
+          <div
+            ref={frameRef}
+            style={{
+              position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+              width: '88%', aspectRatio: '4 / 1',
+              boxShadow: '0 0 0 2000px rgba(0,0,0,0.65)',
+              border: `2px solid ${accentColor}`,
+              pointerEvents: 'none',
+            }}
+          />
+        </div>
+
+        {/* 하단 컨트롤 */}
+        <div style={{ padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <button onClick={() => stepZoom(-0.1)} aria-label="축소" style={{ background: 'none', border: 'none', color: '#aaaaaa', cursor: 'pointer', padding: 0, display: 'flex', flexShrink: 0 }}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /><path d="M8 11h6" /></svg>
+            </button>
+            <input
+              type="range"
+              min={zMinNow} max="5" step="0.01"
+              value={draft.zoom}
+              onChange={(e) => handleZoomChange(Number(e.target.value))}
+              style={{ flex: 1, accentColor: accentColor, cursor: 'pointer' }}
+            />
+            <button onClick={() => stepZoom(0.1)} aria-label="확대" style={{ background: 'none', border: 'none', color: '#aaaaaa', cursor: 'pointer', padding: 0, display: 'flex', flexShrink: 0 }}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /><path d="M11 8v6" /><path d="M8 11h6" /></svg>
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px' }}>
+            <span style={{ fontSize: '12px', color: '#888888', flexShrink: 0, width: '28px' }}>회전</span>
+            <input
+              type="range"
+              min="-180" max="180" step="1"
+              value={draft.rotation}
+              onChange={(e) => onChange(clampHeaderImageOffset({ ...draft, rotation: Number(e.target.value) }))}
+              style={{ flex: 1, accentColor: accentColor, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '12px', color: '#cccccc', width: '36px', textAlign: 'right', flexShrink: 0 }}>{draft.rotation}°</span>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '14px' }}>
+            <button onClick={onReset} style={{ background: 'none', border: '1px solid #404040', borderRadius: '999px', color: '#999999', fontSize: '11px', cursor: 'pointer', padding: '5px 14px' }}>
+              초기화
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FormPanel({
   accentColor, setAccentColor,
   bgColor, setBgColor,
@@ -503,6 +726,10 @@ function FormPanel({
   nickname, setNickname, twitterId, setTwitterId,
   subscribeFollow, toggleSubscribeFollow,
   commentNarrow, setCommentNarrow,
+  headerImage, headerImageDraft, headerImageModalOpen,
+  handleAddHeaderImage, handleHeaderImageFile, handleEditHeaderImage, handleDeleteHeaderImage,
+  handleApplyHeaderImage, handleCancelHeaderImageEdit, handleResetHeaderImageDraft,
+  setHeaderImageDraft,
   selections, toggleOption, setFieldText,
   customTitle, setCustomTitle, customValue, setCustomValue,
   spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
@@ -584,11 +811,12 @@ function FormPanel({
   };
 
   return (
+    <>
     <div style={{
       width: '100%',
       flexShrink: 0,
       backgroundColor: '#151515',
-      borderTop: isMobile ? '1px solid #282828' : 'none',
+      borderTop: 'none',
       padding: isMobile ? '16px' : '0',
     }}>
       {/* 안내 */}
@@ -640,23 +868,36 @@ function FormPanel({
       <div style={cardStyle}>
         <h2 style={h2Style}>스타일</h2>
 
-        {/* 레이아웃 */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ ...subLabelStyle, marginBottom: '8px' }}>레이아웃</div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {LAYOUT_OPTIONS.map(([val, lbl]) => (
-              <label key={val} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: selectedLayout === val ? '#ffffff' : '#b0b0b0' }}>
-                <input
-                  type="radio"
-                  name="layout"
-                  value={val}
-                  checked={selectedLayout === val}
-                  onChange={() => setSelectedLayout(val)}
-                  style={{ accentColor: accentColor, cursor: 'pointer' }}
-                />
-                {lbl}
-              </label>
-            ))}
+        {/* 레이아웃 + 폰트 (한 줄) */}
+        <div style={{ display: 'flex', gap: '24px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ ...subLabelStyle, marginBottom: '8px' }}>레이아웃</div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {LAYOUT_OPTIONS.map(([val, lbl]) => (
+                <label key={val} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: selectedLayout === val ? '#ffffff' : '#b0b0b0' }}>
+                  <input
+                    type="radio"
+                    name="layout"
+                    value={val}
+                    checked={selectedLayout === val}
+                    onChange={() => setSelectedLayout(val)}
+                    style={{ accentColor: accentColor, cursor: 'pointer' }}
+                  />
+                  {lbl}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: '140px' }}>
+            <div style={{ ...subLabelStyle, marginBottom: '8px' }}>폰트</div>
+            <select
+              value={selectedFont}
+              onChange={(e) => setSelectedFont(e.target.value)}
+              suppressHydrationWarning
+              style={{ ...inputStyle, cursor: 'pointer' }}
+            >
+              {FONT_OPTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+            </select>
           </div>
         </div>
 
@@ -735,17 +976,48 @@ function FormPanel({
         {/* 구분선 */}
         <div style={{ ...dividerStyle, margin: 0, marginBottom: '12px' }} />
 
-        {/* 폰트 */}
+        {/* 헤더 이미지 */}
         <div>
-          <div style={{ ...subLabelStyle, marginBottom: '8px' }}>폰트</div>
-          <select
-            value={selectedFont}
-            onChange={(e) => setSelectedFont(e.target.value)}
-            suppressHydrationWarning
-            style={{ ...inputStyle, cursor: 'pointer' }}
-          >
-            {FONT_OPTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ ...subLabelStyle }}>헤더 이미지</div>
+            <span style={{ fontSize: '11px', color: '#606060' }}>가로:세로 = 4:1 · 3MB 이하</span>
+          </div>
+          {headerImage ? (() => {
+            const safeHeader = clampHeaderImageOffset(headerImage);
+            const tFrameAspect = 4;
+            const tAspect = safeHeader.aspect || tFrameAspect;
+            const trw = Math.max(1, tAspect / tFrameAspect);
+            const trh = Math.max(1, tFrameAspect / tAspect);
+            const tFrameW = 96, tFrameH = 24;
+            const tImgW = tFrameW * trw * safeHeader.zoom;
+            const tImgH = tFrameH * trh * safeHeader.zoom;
+            const tOffX = (safeHeader.offsetXPct / 100) * tFrameW;
+            const tOffY = (safeHeader.offsetYPct / 100) * tFrameH;
+            return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: tFrameW, height: tFrameH, borderRadius: '4px', overflow: 'hidden', border: '2px solid #404040', flexShrink: 0, position: 'relative', backgroundColor: '#1a1a1a' }}>
+                <img
+                  src={safeHeader.src}
+                  alt=""
+                  style={{
+                    position: 'absolute', left: '50%', top: '50%',
+                    width: `${tImgW}px`, height: `${tImgH}px`,
+                    maxWidth: 'none', maxHeight: 'none',
+                    transform: `translate(-50%, -50%) translate(${tOffX}px, ${tOffY}px) rotate(${safeHeader.rotation}deg)`,
+                    transformOrigin: 'center center',
+                  }}
+                />
+              </div>
+              <button onClick={handleEditHeaderImage} style={{ ...getBadgeStyle(false, accentColor), cursor: 'pointer', fontSize: '12px', padding: '4px 12px' }}>편집</button>
+              <button onClick={handleDeleteHeaderImage} style={{ backgroundColor: 'transparent', border: '1px solid #603030', borderRadius: '999px', color: '#e08888', fontSize: '12px', cursor: 'pointer', padding: '4px 12px' }}>삭제</button>
+            </div>
+            );
+          })() : (
+            <button onClick={handleAddHeaderImage}
+              style={{ ...getBadgeStyle(true, accentColor), cursor: 'pointer', fontSize: '12px', padding: '4px 12px' }}>
+              + 이미지 추가
+            </button>
+          )}
         </div>
 
         {/* 구분선 */}
@@ -989,7 +1261,7 @@ function FormPanel({
       </button>
 
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <button onClick={handleResetAll} style={{ backgroundColor: 'transparent', color: '#606060', border: 'none', fontSize: '12px', cursor: 'pointer', padding: '6px 12px', opacity: '0.6' }} onMouseEnter={(e) => (e.target.style.opacity = '1')} onMouseLeave={(e) => (e.target.style.opacity = '0.8')}>
+        <button onClick={handleResetAll} style={{ background: 'none', border: '1px solid #404040', borderRadius: '999px', color: '#999999', fontSize: '11px', cursor: 'pointer', padding: '5px 14px' }}>
           모든 설정 초기화
         </button>
       </div>
@@ -1015,6 +1287,17 @@ function FormPanel({
         </div>
       </div>
     </div >
+    {headerImageModalOpen && headerImageDraft && (
+      <HeaderImageEditorModal
+        draft={headerImageDraft}
+        onChange={setHeaderImageDraft}
+        onCancel={handleCancelHeaderImageEdit}
+        onApply={handleApplyHeaderImage}
+        onReset={handleResetHeaderImageDraft}
+        accentColor={accentColor}
+      />
+    )}
+    </>
   );
 }
 
@@ -1039,6 +1322,10 @@ export default function Home() {
   const [twitterId, setTwitterIdState] = useState('');
   const [subscribeFollow, setSubscribeFollowState] = useState([]);
   const [commentNarrow, setCommentNarrowState] = useState(false);
+  const [headerImage, setHeaderImageState] = useState(null);
+  const [headerImageDraft, setHeaderImageDraft] = useState(null);
+  const [headerImageModalOpen, setHeaderImageModalOpen] = useState(false);
+  const headerImageFileInputRef = useRef(null);
   const [customTitle, setCustomTitleState] = useState('');
   const [customValue, setCustomValueState] = useState('');
   const [selections, setSelectionsState] = useState(buildInitialSelections);
@@ -1064,6 +1351,7 @@ export default function Home() {
     const t = lsGet('rgg_twitterId'); if (t) setTwitterIdState(t);
     const sf2 = lsGet('rgg_subscribeFollow'); if (sf2) { try { setSubscribeFollowState(JSON.parse(sf2)); } catch (e) { } }
     const cn = lsGet('rgg_commentNarrow'); if (cn) setCommentNarrowState(cn === 'true');
+    const hi = lsGet('rgg_headerImage'); if (hi) { try { setHeaderImageState(JSON.parse(hi)); } catch (e) { } }
     const ct = lsGet('rgg_customTitle'); if (ct) setCustomTitleState(ct);
     const cv = lsGet('rgg_customValue'); if (cv) setCustomValueState(cv);
     const s = lsGet('rgg_selections'); if (s) setSelectionsState(JSON.parse(s));
@@ -1102,6 +1390,59 @@ export default function Home() {
     const [moved] = arr.splice(fromIdx, 1);
     arr.splice(toIdx, 0, moved);
     saveStickers(arr);
+  };
+
+  const saveHeaderImage = (v) => {
+    setHeaderImageState(v);
+    try { lsSet('rgg_headerImage', JSON.stringify(v)); } catch (e) { }
+  };
+
+  const handleAddHeaderImage = () => {
+    headerImageFileInputRef.current?.click();
+  };
+
+  const handleHeaderImageFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > HEADER_IMAGE_MAX_SIZE_BYTES) { alert('이미지는 3MB 이하만 가능합니다.'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const src = ev.target.result;
+      const img = new Image();
+      img.onload = () => {
+        setHeaderImageDraft({ src, aspect: img.naturalWidth / img.naturalHeight, ...HEADER_IMAGE_DEFAULT });
+        setHeaderImageModalOpen(true);
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleEditHeaderImage = () => {
+    if (!headerImage) return;
+    setHeaderImageDraft(clampHeaderImageOffset({ ...headerImage }));
+    setHeaderImageModalOpen(true);
+  };
+
+  const handleDeleteHeaderImage = () => {
+    saveHeaderImage(null);
+  };
+
+  const handleApplyHeaderImage = () => {
+    if (headerImageDraft) saveHeaderImage(headerImageDraft);
+    setHeaderImageModalOpen(false);
+    setHeaderImageDraft(null);
+  };
+
+  const handleCancelHeaderImageEdit = () => {
+    setHeaderImageModalOpen(false);
+    setHeaderImageDraft(null);
+  };
+
+
+  const handleResetHeaderImageDraft = () => {
+    setHeaderImageDraft((d) => d && ({ ...d, ...HEADER_IMAGE_DEFAULT }));
   };
 
   const handleStickerFile = (e) => {
@@ -1250,21 +1591,27 @@ export default function Home() {
       const usableW = wrapW - (mobile ? 32 : 48);
       const wrapH = previewWrapRef.current.offsetHeight - (mobile ? 32 : 48);
       const scaleByW = usableW / cardW;
-      const scaleByH = mobile ? Infinity : wrapH / IMAGE_SIZE.vertical.minHeight;
-      setZoom(Math.min(scaleByW, scaleByH, 0.5));
+      const contentH = previewRef.current?.scrollHeight || IMAGE_SIZE.vertical.minHeight;
+      const scaleByH = mobile ? Infinity : wrapH / (contentH * 1.03);
+      setZoom(Math.min(scaleByW, scaleByH, 0.5) * 0.99);
     }
     update();
     window.addEventListener('resize', update);
 
-    let ro;
+    let ro, contentRo;
     if (previewWrapRef.current && typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(update);
       ro.observe(previewWrapRef.current);
+    }
+    if (previewRef.current && typeof ResizeObserver !== 'undefined') {
+      contentRo = new ResizeObserver(update);
+      contentRo.observe(previewRef.current);
     }
 
     return () => {
       window.removeEventListener('resize', update);
       if (ro) ro.disconnect();
+      if (contentRo) contentRo.disconnect();
     };
   }, [isMobile, cardW]);
 
@@ -1310,6 +1657,7 @@ export default function Home() {
     setTwitterIdState('');
     setSubscribeFollowState([]);
     setCommentNarrowState(false);
+    saveHeaderImage(null);
     setCustomTitleState('');
     setCustomValueState('');
     setSelectionsState(buildInitialSelections());
@@ -1321,7 +1669,7 @@ export default function Home() {
     LS_KEYS.forEach(lsRemove);
   }
 
-  const previewData = { nickname, twitterId, subscribeFollow, selections, spoilerValue, spoilerOther, customTitle, customValue, gameStates, commentNarrow };
+  const previewData = { nickname, twitterId, subscribeFollow, selections, spoilerValue, spoilerOther, customTitle, customValue, gameStates, commentNarrow, headerImage };
 
   const PreviewArea = (
     <div ref={previewWrapRef} style={{
@@ -1338,6 +1686,7 @@ export default function Home() {
     }}>
       {/* 숨김 파일 input — 스티커 추가용 */}
       <input ref={stickerFileInputRef} type="file" accept="image/png,image/gif,image/webp" onChange={handleStickerFile} style={{ display: 'none' }} />
+      <input ref={headerImageFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleHeaderImageFile} style={{ display: 'none' }} />
       {/* 저장용 원본 — 화면 밖에 숨김 */}
       <div ref={previewRef} style={{ position: 'fixed', left: '-9999px', top: 0, width: `${cardW}px`, pointerEvents: 'none', zIndex: -1 }}>
         <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} isExporting={true} />
@@ -1366,6 +1715,10 @@ export default function Home() {
     nickname, setNickname, twitterId, setTwitterId,
     subscribeFollow, toggleSubscribeFollow,
     commentNarrow, setCommentNarrow,
+    headerImage, headerImageDraft, headerImageModalOpen,
+    handleAddHeaderImage, handleHeaderImageFile, handleEditHeaderImage, handleDeleteHeaderImage,
+    handleApplyHeaderImage, handleCancelHeaderImageEdit, handleResetHeaderImageDraft,
+    setHeaderImageDraft,
     selections, toggleOption, setFieldText,
     customTitle, setCustomTitle, customValue, setCustomValue,
     spoilerValue, setSpoilerValue, spoilerOther, setSpoilerOther,
