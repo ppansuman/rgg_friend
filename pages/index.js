@@ -707,7 +707,7 @@ function HeaderImageEditorModal({ draft, onChange, onCancel, onApply, onReset, a
 
           <div style={{ textAlign: 'center', marginTop: '14px' }}>
             <button onClick={onReset} style={{ background: 'none', border: '1px solid #404040', borderRadius: '999px', color: '#999999', fontSize: '11px', cursor: 'pointer', padding: '5px 14px' }}>
-              초기화
+              위치 초기화
             </button>
           </div>
         </div>
