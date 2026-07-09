@@ -1,5 +1,5 @@
 # 용스튜 소개표 생성기
-![Version](https://img.shields.io/badge/version-v0.8.3-blue)
+![Version](https://img.shields.io/badge/version-v0.9.0-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 🔗 https://rgg-friend.vercel.app/
@@ -38,7 +38,7 @@
 - ~폰트 3종 제공~
 - ~아이콘 추가~
 - ~가로형 이미지 제공~
-- 헤더 이미지 추가 기능 제공
+- ~헤더 이미지 추가 기능 제공~
 
 ### v2.0.0
 - 다국어 지원(영어, 일본어, 중국어)
@@ -47,6 +47,9 @@
 ---
 
 ## 업데이트 내역
+
+### v0.9.0 · 2026.07.08
+- 헤더 기능 추가
 
 ### v0.8.3 · 2026.07.07
 - 가로형 한마디란 위치 토글 전환 추가
