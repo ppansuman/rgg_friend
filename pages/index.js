@@ -178,7 +178,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     const otherFontSize = hasOtherBadges ? 10 : 13;
     return (
       <div key={row.key} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: fs(9) }}>
-        <span style={{ minWidth: fs(t.rowLabelWidth), fontSize: fs(13), fontWeight: '800', color: subTextColor, flexShrink: 0, paddingTop: fs(3) }}>
+        <span style={{ minWidth: fs(t.rowLabelWidth), paddingRight: fs(t.rowLabelGap), fontSize: fs(13), fontWeight: '800', color: subTextColor, flexShrink: 0, paddingTop: fs(3) }}>
           {t.rows[row.key]}
         </span>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
@@ -202,7 +202,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     if (!text.trim()) return null;
     return (
       <div key={row.key} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: fs(12) }}>
-        <div style={{ minWidth: fs(t.rowLabelWidth), flexShrink: 0, paddingTop: fs(3) }}>
+        <div style={{ minWidth: fs(t.rowLabelWidth), paddingRight: fs(t.rowLabelGap), flexShrink: 0, paddingTop: fs(3) }}>
           <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor }}>{t.rows[row.key]}</span>
         </div>
         <div style={{ flex: 1, paddingTop: fs(3) }}>
