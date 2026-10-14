@@ -6,7 +6,7 @@ import { version, lastUpdated } from '../package.json';
 import {
   ROWS, IMAGE_SIZE, GAME_STATES, GAME_STATE_LABELS,
   GAME_STATE_GROUPS, GAMES, SITE_URL, DEFAULT_ACCENT, LS_KEYS, FAMILY_ICONS,
-  SUBSCRIBE_OPTIONS, FONT_OPTIONS, LAYOUT_OPTIONS, BG_COLOR_PRESETS, ACCENT_PRESETS,
+  SUBSCRIBE_OPTIONS, FONT_OPTIONS, JA_FONT_SUBSTITUTES, LAYOUT_OPTIONS, BG_COLOR_PRESETS, ACCENT_PRESETS,
   STICKER_MAX_SIZE_BYTES, HEADER_IMAGE_MAX_SIZE_BYTES, HEADER_IMAGE_DEFAULT,
 } from '../lib/constants';
 
@@ -377,7 +377,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
               const nicknameFontSize = len <= 6 ? 38 : len <= 9 ? 30 : len <= 14 ? 22 : 18;
               const nicknameOffset = len <= 6 ? 0 : len <= 9 ? 2 : len <= 14 ? 7 : 7;
               return (
-                <div style={{ minWidth: 0, flexShrink: 1, overflow: 'hidden' }}>
+                <div style={{ minWidth: 0, flexShrink: 1, overflowX: 'clip', overflowY: 'visible' }}>
                   <Twemoji options={{ className: 'twemoji' }}>
                     <span style={{
                       fontSize: fs(nicknameFontSize),
@@ -958,7 +958,11 @@ function FormPanel({
               suppressHydrationWarning
               style={{ ...inputStyle, cursor: 'pointer' }}
             >
-              {FONT_OPTIONS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+              {FONT_OPTIONS.map(f => (
+                <option key={f.value} value={f.value}>
+                  {language === LANG.JA && JA_FONT_SUBSTITUTES[f.value] ? JA_FONT_SUBSTITUTES[f.value].label : (f.label[language] || f.label.en)}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -1754,6 +1758,8 @@ export default function Home() {
     LS_KEYS.forEach(lsRemove);
   }
 
+  const renderFont = (language === LANG.JA && JA_FONT_SUBSTITUTES[selectedFont]?.value) || selectedFont;
+
   const previewData = { nickname, twitterId, subscribeFollow, selections, spoilerValue, spoilerOther, customTitle, customValue, gameStates, commentNarrow, headerImage };
 
   const PreviewArea = (
@@ -1774,7 +1780,7 @@ export default function Home() {
       <input ref={headerImageFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleHeaderImageFile} style={{ display: 'none' }} />
       {/* 저장용 원본 — 화면 밖에 숨김 */}
       <div ref={previewRef} style={{ position: 'fixed', left: '-9999px', top: 0, width: `${cardW}px`, pointerEvents: 'none', zIndex: -1 }}>
-        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} isExporting={true} language={language} />
+        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={renderFont} layout={selectedLayout} stickers={stickers} isExporting={true} language={language} />
       </div>
       {/* 미리보기 */}
       <div ref={previewInnerRef} data-preview-inner style={{
@@ -1785,7 +1791,7 @@ export default function Home() {
         maxWidth: '100%',
         width: `${cardW}px`,
       }}>
-        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} selectedStickerId={selectedStickerId} onStickerMouseDown={handleStickerMouseDown} language={language} />
+        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={renderFont} layout={selectedLayout} stickers={stickers} selectedStickerId={selectedStickerId} onStickerMouseDown={handleStickerMouseDown} language={language} />
       </div>
     </div>
   );
@@ -1821,6 +1827,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600&display=swap" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=DotGothic16&family=Kosugi+Maru&family=New+Tegomin&family=Shippori+Mincho:wght@400;600;700&display=swap" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css" />
         <style>{`
           @font-face { font-family: 'Galmuri11'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2506-1@1.0/Galmuri11-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
