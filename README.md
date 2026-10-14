@@ -1,5 +1,5 @@
 # 용스튜 소개표 생성기
-![Version](https://img.shields.io/badge/version-v0.10.1-blue)
+![Version](https://img.shields.io/badge/version-v0.10.2-blue)
 ![Status](https://img.shields.io/badge/status-prototype-orange)
 
 🔗 https://rgg-friend.vercel.app/
@@ -36,6 +36,10 @@
 ---
 
 ## 업데이트 내역
+
+### v0.10.2 · 2026.10.15
+- 일본어판 폰트 대체 적용 (한자 지원 폰트)
+- 항목 제목 간격 조정
 
 ### v0.10.1 · 2026.10.14
 - 영어판 항목 간격 조정
