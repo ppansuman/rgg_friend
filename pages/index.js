@@ -10,6 +10,8 @@ import {
   STICKER_MAX_SIZE_BYTES, HEADER_IMAGE_MAX_SIZE_BYTES, HEADER_IMAGE_DEFAULT,
 } from '../lib/constants';
 
+import { LANG, UI_TEXT, translateOption } from '../lib/i18n';
+
 import {
   cardStyle, labelStyle, inputStyle, h2Style, h3Style,
   guideStyle, linkStyle, footerTextStyle, getBadgeStyle,
@@ -99,13 +101,14 @@ function StickerItem({ s, cardW, selected, onMouseDown, isExporting }) {
   );
 }
 
-function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, familyIcon, selectedFont, stickers = [], selectedStickerId, onStickerMouseDown, isExporting = false, layout = 'vertical' }) {
+function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, familyIcon, selectedFont, stickers = [], selectedStickerId, onStickerMouseDown, isExporting = false, layout = 'vertical', language = LANG.KO }) {
   const {
     nickname, twitterId, subscribeFollow,
     selections, spoilerValue, spoilerOther,
     customTitle, customValue, gameStates, commentNarrow, headerImage,
   } = data;
 
+  const t = UI_TEXT[language];
   const isHorizontal = layout === 'horizontal';
   const familyIconData = FAMILY_ICONS.find(i => i.key === familyIcon);
   const familySrc = familyIconData
@@ -128,8 +131,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const accentDark = getLuminance(accentColor) > 160 ? darkenHex(accentColor, 50) : accentColor;
 
   const spoilerLabel = spoilerValue === 0 ? null
-    : spoilerValue < 34 ? '약'
-      : spoilerValue < 67 ? '중' : '강';
+    : spoilerValue < 34 ? t.spoilerWeak
+      : spoilerValue < 67 ? t.spoilerMid : t.spoilerStrong;
 
   const gameGroups = GAME_STATE_GROUPS.map((g) => ({
     ...g,
@@ -175,8 +178,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     const otherFontSize = hasOtherBadges ? 10 : 13;
     return (
       <div key={row.key} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: fs(9) }}>
-        <span style={{ minWidth: fs(80), fontSize: fs(13), fontWeight: '800', color: subTextColor, flexShrink: 0, paddingTop: fs(3) }}>
-          {row.title}
+        <span style={{ minWidth: fs(t.rowLabelWidth), fontSize: fs(13), fontWeight: '800', color: subTextColor, flexShrink: 0, paddingTop: fs(3) }}>
+          {t.rows[row.key]}
         </span>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
           {selected.map((opt) => {
@@ -186,7 +189,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
                 ? <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block', paddingTop: fs(3) }}>{otherText}</span></Twemoji>
                 : <Twemoji key="other" options={{ className: 'twemoji' }}><span style={{ fontSize: fs(otherFontSize), color: textColor, display: 'inline-block' }}>{otherText}</span></Twemoji>;
             }
-            return <PreviewBadge key={opt} label={opt} />;
+            return <PreviewBadge key={opt} label={translateOption(opt, language)} />;
           })}
         </div>
       </div>
@@ -199,8 +202,8 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     if (!text.trim()) return null;
     return (
       <div key={row.key} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: fs(12) }}>
-        <div style={{ minWidth: fs(80), flexShrink: 0, paddingTop: fs(3) }}>
-          <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor }}>{row.title}</span>
+        <div style={{ minWidth: fs(t.rowLabelWidth), flexShrink: 0, paddingTop: fs(3) }}>
+          <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor }}>{t.rows[row.key]}</span>
         </div>
         <div style={{ flex: 1, paddingTop: fs(3) }}>
           <Twemoji options={{ className: 'twemoji' }}>
@@ -232,7 +235,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   const SpoilerInline = () => (
     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: fs(4), width: fs(120) }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: fs(8) }}>
-        <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor, whiteSpace: 'nowrap' }}>스포일러</span>
+        <span style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor, whiteSpace: 'nowrap' }}>{t.spoiler}</span>
         <span style={{ fontSize: fs(13), fontWeight: '800', color: accentDark }}>{spoilerLabel}</span>
       </div>
       <div style={{ width: '100%', height: fs(4), backgroundColor: getLuminance(bgColor) > 128 ? '#e8e8e8' : '#444444', borderRadius: '999px', overflow: 'hidden' }}>
@@ -270,9 +273,9 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
 
     const GroupBlock = ({ group }) => (
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: fs(10), fontWeight: '800', color: subTextColor, marginBottom: fs(8) }}>{group.title}</div>
+        <div style={{ fontSize: fs(10), fontWeight: '800', color: subTextColor, marginBottom: fs(8) }}>{group.title[language]}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {group.games.map((gm) => <GameBadge key={gm.key} label={gm.title} />)}
+          {group.games.map((gm) => <GameBadge key={gm.key} label={gm.title[language]} />)}
         </div>
       </div>
     );
@@ -280,7 +283,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
     return (
       <div style={{ marginBottom: isHorizontal ? 0 : fs(8), marginTop: isHorizontal ? 0 : fs(25) }}>
         <div style={{ fontSize: fs(13), fontWeight: '800', color: subTextColor, marginBottom: fs(8), paddingBottom: isHorizontal ? 0 : fs(8), borderBottom: isHorizontal ? 'none' : `1.5px solid ${borderColor}` }}>
-          게임 플레이 현황
+          {t.gamePlayStatus}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: fs(4) }}>
           {soloGroup && <GroupBlock group={soloGroup} />}
@@ -299,13 +302,12 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
   };
 
   const CommentBlock = () => {
-    const commentRow = ROWS.find(r => r.key === 'comment');
     const text = selections['comment'] || '';
     if (!text.trim()) return null;
     return (
       <div style={{ paddingTop: isHorizontal ? fs(10) : fs(5) }}>
         <div style={{ padding: `${fs(12)} ${fs(24)} ${fs(24)}`, backgroundColor: getLuminance(bgColor) > 128 ? '#f5f5f5' : '#2a2a2a', borderRadius: fs(8) }}>
-          <div style={{ fontSize: fs(10), fontWeight: '800', color: subTextColor, marginBottom: fs(4) }}>{commentRow?.title}</div>
+          <div style={{ fontSize: fs(10), fontWeight: '800', color: subTextColor, marginBottom: fs(4) }}>{t.rows.comment}</div>
           <Twemoji options={{ className: 'twemoji' }}>
             <div style={{ fontSize: fs(13), color: textColor, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{text}</div>
           </Twemoji>
@@ -371,7 +373,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
               />
             )}
             {(() => {
-              const len = (nickname || '닉네임').length;
+              const len = (nickname || t.nicknameFallback).length;
               const nicknameFontSize = len <= 6 ? 38 : len <= 9 ? 30 : len <= 14 ? 22 : 18;
               const nicknameOffset = len <= 6 ? 0 : len <= 9 ? 2 : len <= 14 ? 7 : 7;
               return (
@@ -386,7 +388,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
                       whiteSpace: 'nowrap',
                       marginBottom: fs(nicknameOffset),
                     }}>
-                      {nickname || '닉네임'}
+                      {nickname || t.nicknameFallback}
                     </span>
                   </Twemoji>
                 </div>
@@ -405,7 +407,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
                       border: `${fs(1)} solid ${badgeBorder}`,
                       padding: `${fs(0)} ${fs(8)}`, borderRadius: '999px', whiteSpace: 'nowrap'
                     }}>
-                      {opt}
+                      {translateOption(opt, language)}
                     </span>
                   ))}
                 </div>
@@ -492,7 +494,7 @@ function PreviewCard({ data, accentColor, bgColor = '#ffffff', badgeTextCustom, 
       {/* 하단 사이트 정보 */}
       <div style={{ textAlign: 'center', paddingBottom: fs(10), fontFamily: 'Pretendard, sans-serif' }}>
         <span style={{ fontSize: fs(8), color: getLuminance(bgColor) > 128 ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.22)' }}>
-          용스튜 소개표 생성기 {SITE_URL} v{version}
+          {t.pageTitle} {SITE_URL} v{version}
         </span>
       </div>
       {/* 스티커 — 텍스트 위 레이어 */}
@@ -553,11 +555,43 @@ const Hashtag = ({ tag }) => {
 };
 
 // ─── 헤더 이미지 편집 모달 ───
-function HeaderImageEditorModal({ draft, onChange, onCancel, onApply, onReset, accentColor }) {
+function HeaderImageEditorModal({ draft, onChange, onCancel, onApply, onReset, accentColor, t }) {
   const canvasRef = useRef(null);
   const frameRef = useRef(null);
   const dragRef = useRef(null);
+  const dialogRef = useRef(null);
+  const cancelBtnRef = useRef(null);
   const [frameSize, setFrameSize] = useState({ width: 300, height: 100 });
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement;
+    cancelBtnRef.current?.focus();
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onCancel();
+        return;
+      }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
+    };
+  }, [onCancel]);
 
   useEffect(() => {
     const measure = () => {
@@ -629,15 +663,15 @@ function HeaderImageEditorModal({ draft, onChange, onCancel, onApply, onReset, a
 
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div style={{ backgroundColor: '#151515', border: '1px solid #333', borderRadius: '10px', width: '100%', maxWidth: '460px', overflow: 'hidden' }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="header-image-modal-title" style={{ backgroundColor: '#151515', border: '1px solid #333', borderRadius: '10px', width: '100%', maxWidth: '460px', overflow: 'hidden' }}>
         {/* 상단 바: 뒤로가기 / 제목 / 적용 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
-          <button onClick={onCancel} aria-label="취소" style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px', display: 'flex' }}>
+          <button ref={cancelBtnRef} onClick={onCancel} aria-label={t.headerModalCancel} style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px', display: 'flex' }}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
           </button>
-          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>이미지 영역 설정</h3>
+          <h3 id="header-image-modal-title" style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>{t.headerModalTitle}</h3>
           <button onClick={onApply} style={{ backgroundColor: '#f0f0f0', border: 'none', borderRadius: '999px', color: '#111111', fontSize: '13px', fontWeight: '700', cursor: 'pointer', padding: '7px 16px' }}>
-            적용
+            {t.headerModalApply}
           </button>
         </div>
 
@@ -678,7 +712,7 @@ function HeaderImageEditorModal({ draft, onChange, onCancel, onApply, onReset, a
         {/* 하단 컨트롤 */}
         <div style={{ padding: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <button onClick={() => stepZoom(-0.1)} aria-label="축소" style={{ background: 'none', border: 'none', color: '#aaaaaa', cursor: 'pointer', padding: 0, display: 'flex', flexShrink: 0 }}>
+            <button onClick={() => stepZoom(-0.1)} aria-label={t.headerModalZoomOut} style={{ background: 'none', border: 'none', color: '#aaaaaa', cursor: 'pointer', padding: 0, display: 'flex', flexShrink: 0 }}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /><path d="M8 11h6" /></svg>
             </button>
             <input
@@ -686,20 +720,22 @@ function HeaderImageEditorModal({ draft, onChange, onCancel, onApply, onReset, a
               min={zMinNow} max="5" step="0.01"
               value={draft.zoom}
               onChange={(e) => handleZoomChange(Number(e.target.value))}
+              aria-label={t.headerModalZoom}
               style={{ flex: 1, accentColor: accentColor, cursor: 'pointer' }}
             />
-            <button onClick={() => stepZoom(0.1)} aria-label="확대" style={{ background: 'none', border: 'none', color: '#aaaaaa', cursor: 'pointer', padding: 0, display: 'flex', flexShrink: 0 }}>
+            <button onClick={() => stepZoom(0.1)} aria-label={t.headerModalZoomIn} style={{ background: 'none', border: 'none', color: '#aaaaaa', cursor: 'pointer', padding: 0, display: 'flex', flexShrink: 0 }}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /><path d="M11 8v6" /><path d="M8 11h6" /></svg>
             </button>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px' }}>
-            <span style={{ fontSize: '12px', color: '#888888', flexShrink: 0, width: '28px' }}>회전</span>
+            <span style={{ fontSize: '12px', color: '#888888', flexShrink: 0, width: '28px' }}>{t.headerModalRotation}</span>
             <input
               type="range"
               min="-180" max="180" step="1"
               value={draft.rotation}
               onChange={(e) => onChange(clampHeaderImageOffset({ ...draft, rotation: Number(e.target.value) }))}
+              aria-label={t.headerModalRotation}
               style={{ flex: 1, accentColor: accentColor, cursor: 'pointer' }}
             />
             <span style={{ fontSize: '12px', color: '#cccccc', width: '36px', textAlign: 'right', flexShrink: 0 }}>{draft.rotation}°</span>
@@ -707,7 +743,7 @@ function HeaderImageEditorModal({ draft, onChange, onCancel, onApply, onReset, a
 
           <div style={{ textAlign: 'center', marginTop: '14px' }}>
             <button onClick={onReset} style={{ background: 'none', border: '1px solid #404040', borderRadius: '999px', color: '#999999', fontSize: '11px', cursor: 'pointer', padding: '5px 14px' }}>
-              위치 초기화
+              {t.headerModalResetPosition}
             </button>
           </div>
         </div>
@@ -717,6 +753,7 @@ function HeaderImageEditorModal({ draft, onChange, onCancel, onApply, onReset, a
 }
 
 function FormPanel({
+  language, setLanguage, t,
   accentColor, setAccentColor,
   bgColor, setBgColor,
   badgeTextCustom, setBadgeTextCustom,
@@ -824,22 +861,24 @@ function FormPanel({
         {/* 제목 + 접기 버튼 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: noticeOpen ? '10px' : '0' }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', marginBottom: '2px' }}>
-              용스튜 소개표 생성기 <span style={{ fontSize: '11px', fontWeight: '400', color: '#888888', marginLeft: '6px' }}>v{version}</span>
-            </div>
-            <div style={{ fontSize: '11px', color: '#bdbdbd' }}>
-              <Hashtag tag="#용스튜_트친소" /> <Hashtag tag="#용과같이_트친소" /> <Hashtag tag="#저지아이즈_트친소" />
+            <h1 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: '700', color: '#ffffff' }}>
+              {t.pageTitle} <span style={{ fontSize: '11px', fontWeight: '400', color: '#888888', marginLeft: '6px' }}>v{version}</span>
+            </h1>
+            <div style={{ fontSize: '11px', color: '#bdbdbd', display: 'flex', flexWrap: 'wrap', columnGap: '6px' }}>
+              {t.hashtags.map((tag) => <Hashtag key={tag} tag={tag} />)}
             </div>
           </div>
           <button
             onClick={() => setNoticeOpen(o => !o)}
+            aria-expanded={noticeOpen}
+            aria-controls="notice-content"
             style={{ backgroundColor: 'transparent', border: '1px solid #404040', borderRadius: '4px', color: '#888888', fontSize: '11px', cursor: 'pointer', padding: '3px 8px', flexShrink: 0, marginLeft: '8px' }}
           >
-            {noticeOpen ? '접기' : '펼치기'}
+            {noticeOpen ? t.collapse : t.expand}
           </button>
         </div>
         {/* 접히는 내용 */}
-        <div style={{
+        <div id="notice-content" style={{
           maxHeight: noticeOpen ? '600px' : '0px',
           opacity: noticeOpen ? 1 : 0,
           overflow: 'hidden',
@@ -847,31 +886,54 @@ function FormPanel({
         }}>
           <div style={{ borderTop: '1px solid rgba(64,64,64,0.5)', paddingTop: '4px' }}>
 
-            <p style={{ ...guideStyle, paddingTop: 8 }}>RGG Studio 게임 유저들을 위한 트친소/소개표/성향표 생성기입니다.</p>
+            <p style={{ ...guideStyle, paddingTop: 8 }}>{t.noticeIntro}</p>
+            <p style={guideStyle}>{t.noticeDev}</p>
 
             <ul style={{ paddingLeft: '20px', paddingTop: 12 }}>
-              <li style={{ ...guideStyle, color: '#ffffff' }}>선택한 항목 순서대로 표시됩니다.</li>
-              <li style={{ ...guideStyle, color: '#ffffff' }}>선택하지 않은 섹션은 이미지에 표시되지 않습니다.</li>
-              <li style={{ ...guideStyle, color: '#ffffff' }}>모든 내용은 기기에 자동으로 저장됩니다.</li>
-              <li style={{ ...guideStyle, color: '#ffffff' }}>오류가 있는 경우엔 브라우저 캐시 삭제 후 사용해 주세요.</li>
+              <li style={{ ...guideStyle, color: '#ffffff' }}>{t.noticeBullet1}</li>
+              <li style={{ ...guideStyle, color: '#ffffff' }}>{t.noticeBullet2}</li>
+              <li style={{ ...guideStyle, color: '#ffffff' }}>{t.noticeBullet3}</li>
+              <li style={{ ...guideStyle, color: '#ffffff' }}>{t.noticeBullet4}</li>
             </ul>
 
-            <p style={{ ...guideStyle, paddingTop: 12 }}>PC와 모바일 모두 구글 크롬을 기준으로 제작되었으며,</p>
-            <p style={guideStyle}>X(트위터) 인앱 브라우저에서 잘 작동되지 않을 수 있습니다.</p>
-            <p style={{ ...guideStyle, paddingTop: 8 }}>오류나 건의 제보: <Hashtag tag="#용스튜소개표_제보" /> 또는 하단 메일 주소로 제보</p>
-            <p style={guideStyle}>업데이트 내역은 하단 GitHub 링크의 Readme 참고</p>
+            <p style={{ ...guideStyle, paddingTop: 12 }}>{t.noticeBrowser1}</p>
+            <p style={guideStyle}>{t.noticeBrowser2}</p>
+            <p style={{ ...guideStyle, paddingTop: 8 }}>{t.noticeReport} ppansuman@gmail.com</p>
+            <p style={guideStyle}>{t.noticeChangelog}</p>
           </div>
         </div>
       </div>
 
       {/* 스타일 */}
       <div style={cardStyle}>
-        <h2 style={h2Style}>스타일</h2>
+        <h2 style={h2Style}>{t.style}</h2>
+
+        {/* 언어 */}
+        <fieldset style={{ border: 'none', margin: 0, padding: 0, marginBottom: '16px' }}>
+          <legend style={{ ...subLabelStyle, marginBottom: '8px', padding: 0 }}>{t.language}</legend>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[[LANG.KO, '한국어'], [LANG.JA, '日本語'], [LANG.EN, 'English']].map(([val, lbl]) => (
+              <label key={val} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: language === val ? '#ffffff' : '#b0b0b0' }}>
+                <input
+                  type="radio"
+                  name="language"
+                  value={val}
+                  checked={language === val}
+                  onChange={() => setLanguage(val)}
+                  style={{ accentColor: accentColor, cursor: 'pointer' }}
+                />
+                {lbl}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div style={{ ...dividerStyle, margin: 0, marginBottom: '16px' }} />
 
         {/* 레이아웃 + 폰트 (한 줄) */}
         <div style={{ display: 'flex', gap: '24px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ ...subLabelStyle, marginBottom: '8px' }}>레이아웃</div>
+          <fieldset style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>
+            <legend style={{ ...subLabelStyle, marginBottom: '8px', padding: 0 }}>{t.layout}</legend>
             <div style={{ display: 'flex', gap: '8px' }}>
               {LAYOUT_OPTIONS.map(([val, lbl]) => (
                 <label key={val} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: selectedLayout === val ? '#ffffff' : '#b0b0b0' }}>
@@ -883,13 +945,13 @@ function FormPanel({
                     onChange={() => setSelectedLayout(val)}
                     style={{ accentColor: accentColor, cursor: 'pointer' }}
                   />
-                  {lbl}
+                  {lbl[language]}
                 </label>
               ))}
             </div>
-          </div>
+          </fieldset>
           <div style={{ flex: 1, minWidth: '140px' }}>
-            <div style={{ ...subLabelStyle, marginBottom: '8px' }}>폰트</div>
+            <div style={{ ...subLabelStyle, marginBottom: '8px' }}>{t.font}</div>
             <select
               value={selectedFont}
               onChange={(e) => setSelectedFont(e.target.value)}
@@ -905,10 +967,10 @@ function FormPanel({
 
         {/* 색상 */}
         <div style={{ marginBottom: colorCustomOpen ? '16px' : '12px' }}>
-          <div style={{ ...subLabelStyle, marginBottom: '10px' }}>색상</div>
+          <div style={{ ...subLabelStyle, marginBottom: '10px' }}>{t.color}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: colorCustomOpen ? '12px' : '0', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ ...labelStyle, fontSize: '11px', color: '#808080', marginBottom: '6px' }}>배경</div>
+              <div style={{ ...labelStyle, fontSize: '11px', color: '#9c9c9c', marginBottom: '6px' }}>{t.bgColor}</div>
               <div style={{ display: 'flex', gap: '6px' }}>
                 {BG_COLOR_PRESETS.map(([color, title, selBorder]) => (
                   <button key={color} onClick={() => {
@@ -918,19 +980,19 @@ function FormPanel({
                       const preset = ACCENT_PRESETS.find(p => p.light === accentColor || p.dark === accentColor);
                       if (preset) setAccentColor(color === '#1a1a1a' ? preset.dark : preset.light);
                     }
-                  }} title={title}
+                  }} title={title[language]} aria-label={title[language]} aria-pressed={bgColor === color}
                     style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: bgColor === color ? selBorder : '2px solid transparent', outline: bgColor === color ? '2px solid #888' : 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }} />
                 ))}
               </div>
             </div>
             <div style={{ width: '1px', height: '32px', backgroundColor: '#404040' }} />
             <div>
-              <div style={{ ...labelStyle, fontSize: '11px', color: '#808080', marginBottom: '6px' }}>포인트컬러</div>
+              <div style={{ ...labelStyle, fontSize: '11px', color: '#9c9c9c', marginBottom: '6px' }}>{t.accentColor}</div>
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 {ACCENT_PRESETS.map(({ light, dark, label: title }) => {
                   const color = bgColor === '#1a1a1a' ? dark : light;
                   return (
-                    <button key={color} onClick={() => { setAccentColor(color); setColorCustomOpen(false); setBadgeTextCustom(bgColor === '#1a1a1a' ? '#ebebeb' : '#1a1a1a'); }} title={title}
+                    <button key={color} onClick={() => { setAccentColor(color); setColorCustomOpen(false); setBadgeTextCustom(bgColor === '#1a1a1a' ? '#ebebeb' : '#1a1a1a'); }} title={title[language]} aria-label={title[language]} aria-pressed={accentColor === color && !colorCustomOpen}
                       style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: color, border: accentColor === color && !colorCustomOpen ? '3px solid #ffffff' : '2px solid transparent', outline: accentColor === color && !colorCustomOpen ? `2px solid ${color}` : 'none', cursor: 'pointer', padding: 0, flexShrink: 0, transition: 'all 0.15s' }} />
                   );
                 })}
@@ -940,9 +1002,10 @@ function FormPanel({
                     setColorCustomOpen(next);
                     if (!next) setBadgeTextCustom(bgColor === '#1a1a1a' ? '#ebebeb' : '#1a1a1a');
                   }}
+                  aria-pressed={colorCustomOpen}
                   style={{ ...getBadgeStyle(colorCustomOpen, accentColor), fontSize: '11px', padding: '3px 10px' }}
                 >
-                  컬러커스텀
+                  {t.colorCustom}
                 </button>
               </div>
             </div>
@@ -950,21 +1013,21 @@ function FormPanel({
           {colorCustomOpen && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', flexWrap: 'wrap', paddingTop: '4px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <span style={{ ...labelStyle, fontSize: '11px', color: '#808080' }}>포인트</span>
+                <label htmlFor="accent-color-hex" style={{ ...labelStyle, fontSize: '11px', color: '#9c9c9c' }}>{t.accentCustomLabel}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)}
+                  <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} aria-label={t.accentCustomLabel}
                     style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', cursor: 'pointer', padding: 0, backgroundColor: 'transparent', flexShrink: 0 }} />
-                  <input type="text" value={hexInput} onChange={(e) => handleHexChange(e.target.value)}
+                  <input id="accent-color-hex" type="text" value={hexInput} onChange={(e) => handleHexChange(e.target.value)}
                     maxLength={7} placeholder="#e29898"
                     style={{ ...inputStyle, width: '100px', fontFamily: 'inherit', fontSize: '13px' }} />
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <span style={{ ...labelStyle, fontSize: '11px', color: '#808080' }}>뱃지 글자</span>
+                <label htmlFor="badge-text-color-hex" style={{ ...labelStyle, fontSize: '11px', color: '#9c9c9c' }}>{t.badgeTextLabel}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input type="color" value={badgeTextCustom} onChange={(e) => setBadgeTextCustom(e.target.value)}
+                  <input type="color" value={badgeTextCustom} onChange={(e) => setBadgeTextCustom(e.target.value)} aria-label={t.badgeTextLabel}
                     style={{ width: 28, height: 28, border: 'none', borderRadius: '50%', cursor: 'pointer', padding: 0, backgroundColor: 'transparent', flexShrink: 0 }} />
-                  <input type="text" value={badgeTextCustom} onChange={(e) => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setBadgeTextCustom(e.target.value); }}
+                  <input id="badge-text-color-hex" type="text" value={badgeTextCustom} onChange={(e) => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setBadgeTextCustom(e.target.value); }}
                     maxLength={7} placeholder="#1a1a1a"
                     style={{ ...inputStyle, width: '100px', fontFamily: 'inherit', fontSize: '13px' }} />
                 </div>
@@ -979,8 +1042,8 @@ function FormPanel({
         {/* 헤더 이미지 */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-            <div style={{ ...subLabelStyle }}>헤더 이미지</div>
-            <span style={{ fontSize: '11px', color: '#606060' }}>가로:세로 = 4:1 · 3MB 이하</span>
+            <div style={{ ...subLabelStyle }}>{t.headerImage}</div>
+            <span style={{ fontSize: '11px', color: '#9c9c9c' }}>{t.headerImageHint}</span>
           </div>
           {headerImage ? (() => {
             const safeHeader = clampHeaderImageOffset(headerImage);
@@ -1008,14 +1071,14 @@ function FormPanel({
                   }}
                 />
               </div>
-              <button onClick={handleEditHeaderImage} style={{ ...getBadgeStyle(false, accentColor), cursor: 'pointer', fontSize: '12px', padding: '4px 12px' }}>편집</button>
-              <button onClick={handleDeleteHeaderImage} style={{ backgroundColor: 'transparent', border: '1px solid #603030', borderRadius: '999px', color: '#e08888', fontSize: '12px', cursor: 'pointer', padding: '4px 12px' }}>삭제</button>
+              <button onClick={handleEditHeaderImage} style={{ ...getBadgeStyle(false, accentColor), cursor: 'pointer', fontSize: '12px', padding: '4px 12px' }}>{t.edit}</button>
+              <button onClick={handleDeleteHeaderImage} style={{ backgroundColor: 'transparent', border: '1px solid #603030', borderRadius: '999px', color: '#e08888', fontSize: '12px', cursor: 'pointer', padding: '4px 12px' }}>{t.delete}</button>
             </div>
             );
           })() : (
             <button onClick={handleAddHeaderImage}
               style={{ ...getBadgeStyle(true, accentColor), cursor: 'pointer', fontSize: '12px', padding: '4px 12px' }}>
-              + 이미지 추가
+              {t.addImage}
             </button>
           )}
         </div>
@@ -1026,13 +1089,13 @@ function FormPanel({
         {/* 스티커 */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-            <div style={{ ...subLabelStyle }}>스티커</div>
-            <span style={{ fontSize: '11px', color: '#606060' }}>PNG · 개당 500KB 이하 · 썸네일 드래그시 순서 변경 가능</span>
+            <div style={{ ...subLabelStyle }}>{t.sticker}</div>
+            <span style={{ fontSize: '11px', color: '#9c9c9c' }}>{t.stickerHint}</span>
           </div>
           <div style={{ marginBottom: '10px' }}>
             <button onClick={handleAddSticker}
               style={{ ...getBadgeStyle(true, accentColor), cursor: 'pointer', fontSize: '12px', padding: '4px 12px' }}>
-              + 이미지 추가
+              {t.addImage}
             </button>
           </div>
           {stickers.length > 0 && (
@@ -1043,14 +1106,16 @@ function FormPanel({
                   onMouseDown={(e) => onThumbPointerDown(e, s.id)}
                   onTouchStart={(e) => onThumbPointerDown(e, s.id)}
                   style={{ position: 'relative', width: 60, height: 60, flexShrink: 0, cursor: 'grab', touchAction: 'none', visibility: s.id === draggingThumbId ? 'hidden' : 'visible' }}>
-                  <div onClick={() => setSelectedStickerId(s.id === selectedStickerId ? null : s.id)}
-                    style={{ width: 60, height: 60, borderRadius: '6px', border: s.id === selectedStickerId ? `2px solid ${accentColor}` : '2px solid #404040', cursor: 'pointer', overflow: 'hidden', backgroundColor: '#1a1a1a' }}>
+                  <button type="button" onClick={() => setSelectedStickerId(s.id === selectedStickerId ? null : s.id)}
+                    aria-pressed={s.id === selectedStickerId} aria-label={t.sticker}
+                    style={{ width: 60, height: 60, borderRadius: '6px', border: s.id === selectedStickerId ? `2px solid ${accentColor}` : '2px solid #404040', cursor: 'pointer', overflow: 'hidden', backgroundColor: '#1a1a1a', padding: 0 }}>
                     <img src={s.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                  </div>
+                  </button>
                   <button
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); handleDeleteSticker(s.id); }}
+                    aria-label={t.delete}
                     style={{
                       position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%',
                       backgroundColor: '#ff4444', border: '2px solid #1a1a1a', color: 'white',
@@ -1080,74 +1145,79 @@ function FormPanel({
 
       {/* 기본 정보 */}
       <div style={cardStyle}>
-        <h2 style={h2Style}>기본 정보</h2>
+        <h2 style={h2Style}>{t.basicInfo}</h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
           <div>
-            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-              닉네임
-              <span style={{ fontSize: '11px', color: '#808080', fontWeight: '400' }}>(최대 14자)</span>
+            <label htmlFor="nickname-input" style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+              {t.nickname}
+              <span style={{ fontSize: '11px', color: '#9c9c9c', fontWeight: '400' }}>{t.nicknameMax}</span>
             </label>
-            <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value.slice(0, 14))} maxLength={14} placeholder="닉네임" suppressHydrationWarning style={inputStyle} />
+            <input id="nickname-input" type="text" value={nickname} onChange={(e) => setNickname(e.target.value.slice(0, 14))} maxLength={14} placeholder={t.nickname} suppressHydrationWarning style={inputStyle} />
           </div>
           <div>
-            <label style={{ ...labelStyle, display: 'block', marginBottom: '6px' }}>트위터 아이디</label>
-            <input type="text" value={twitterId} onChange={(e) => setTwitterId(e.target.value)} placeholder="@yourIDhere" suppressHydrationWarning style={inputStyle} />
+            <label htmlFor="twitter-id-input" style={{ ...labelStyle, display: 'block', marginBottom: '6px' }}>{t.twitterId}</label>
+            <input id="twitter-id-input" type="text" value={twitterId} onChange={(e) => setTwitterId(e.target.value)} placeholder="@yourIDhere" suppressHydrationWarning style={inputStyle} />
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginTop: '12px' }}>
           {/* 소속 아이콘 */}
           <div>
-            <label style={{ ...subLabelStyle, display: 'block', marginBottom: '6px' }}>소속 아이콘</label>
+            <label htmlFor="family-icon-select" style={{ ...subLabelStyle, display: 'block', marginBottom: '6px' }}>{t.familyIconLabel}</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {familyIcon && familyIcon !== 'none' && (
+              {familyIcon && (
                 <img src={(() => { const ic = FAMILY_ICONS.find(f => f.key === familyIcon); return (ic?.srcDark || ic?.src) || ''; })()} alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
               )}
               <select
+                id="family-icon-select"
                 value={familyIcon}
                 onChange={(e) => setFamilyIcon(e.target.value)}
                 suppressHydrationWarning
                 style={{ ...inputStyle, width: 'auto', paddingRight: '28px', cursor: 'pointer' }}
               >
                 {FAMILY_ICONS.map(f => (
-                  <option key={f.key} value={f.key}>{f.label}</option>
+                  <option key={f.key} value={f.key}>{f.label[language]}</option>
                 ))}
               </select>
             </div>
           </div>
           {/* 구독 및 팔로우 */}
-          <div>
-            <label style={{ ...subLabelStyle, display: 'block', marginBottom: '6px', paddingTop: '2px' }}>구독 및 팔로우</label>
+          <fieldset style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>
+            <legend style={{ ...subLabelStyle, marginBottom: '6px', paddingTop: '2px' }}>{t.subscribeFollow}</legend>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {SUBSCRIBE_OPTIONS.map((option) => (
                 <button key={option} onClick={() => toggleSubscribeFollow(option)}
+                  aria-pressed={(subscribeFollow || []).includes(option)}
                   style={{ ...getBadgeStyle((subscribeFollow || []).includes(option), accentColor), position: 'relative', top: '2px' }}>
-                  {option}
+                  {translateOption(option, language)}
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
         </div>
       </div>
 
       {/* 스포일러 */}
       <div style={cardStyle}>
-        <h3 style={h3Style}>스포일러</h3>
+        <h3 style={{ ...h3Style, marginBottom: '4px' }} id="spoiler-heading">{t.spoiler}</h3>
+        <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#9c9c9c' }}>{t.spoilerDesc}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
           <input
             type="range" min="0" max="100" value={spoilerValue}
             onChange={(e) => setSpoilerValue(Number(e.target.value))}
+            aria-labelledby="spoiler-heading"
             suppressHydrationWarning
             style={{ flex: 1, accentColor: accentColor, height: '4px' }}
           />
           <input
             type="number" min="0" max="100" value={spoilerValue}
             onChange={(e) => setSpoilerValue(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+            aria-labelledby="spoiler-heading"
             suppressHydrationWarning
             style={{ ...inputStyle, width: '70px', textAlign: 'center' }}
           />
           <span style={labelStyle}>%</span>
         </div>
-        <input type="text" placeholder="추가 내용 (선택사항, 공백 포함 최대 15자)" value={spoilerOther} onChange={(e) => setSpoilerOther(e.target.value.slice(0, 15))} suppressHydrationWarning style={inputStyle} />
+        <input type="text" placeholder={t.spoilerOtherPlaceholder} aria-label={t.spoilerOtherPlaceholder} value={spoilerOther} onChange={(e) => setSpoilerOther(e.target.value.slice(0, 15))} suppressHydrationWarning style={inputStyle} />
       </div>
 
       {/* ROWS */}
@@ -1156,18 +1226,20 @@ function FormPanel({
           if (row.type === 'option') {
             return (
               <div key={row.key} style={cardStyle}>
-                <h3 style={h3Style}>{row.title}</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: row.key === 'consoleUsed' ? '4px' : '8px' }}>
+                <h3 style={h3Style} id={`${row.key}-heading`}>{t.rows[row.key]}</h3>
+                <div role="group" aria-labelledby={`${row.key}-heading`} style={{ display: 'flex', flexWrap: 'wrap', gap: row.key === 'consoleUsed' ? '4px' : '8px' }}>
                   {row.options.map((option) => (
                     <button key={option} onClick={() => toggleOption(row, option)}
+                      aria-pressed={selections[row.key].includes(option)}
                       style={getBadgeStyle(selections[row.key].includes(option), accentColor)}>
-                      {option}
+                      {translateOption(option, language)}
                     </button>
                   ))}
                 </div>
                 {row.options.includes('기타') && selections[row.key].includes('기타') && (
                   <textarea
-                    placeholder="기타 내용 입력"
+                    placeholder={t.otherPlaceholder}
+                    aria-label={t.otherPlaceholder}
                     value={selections[row.key + 'Other']}
                     onChange={(e) => { setFieldText(row.key + 'Other', e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                     suppressHydrationWarning rows={1}
@@ -1179,23 +1251,24 @@ function FormPanel({
           } else if (row.type === 'custom') {
             return (
               <div key={row.key} style={cardStyle}>
-                <h3 style={h3Style}>자유 기입 항목 (선택)</h3>
-                <input type="text" placeholder="제목 입력" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} suppressHydrationWarning style={{ ...inputStyle, marginBottom: '8px', fontWeight: '600' }} />
-                <input type="text" placeholder="내용 입력" value={customValue} onChange={(e) => setCustomValue(e.target.value)} suppressHydrationWarning style={inputStyle} />
+                <h3 style={h3Style}>{t.customFieldTitle}</h3>
+                <input type="text" placeholder={t.customTitlePlaceholder} aria-label={t.customTitlePlaceholder} value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} suppressHydrationWarning style={{ ...inputStyle, marginBottom: '8px', fontWeight: '600' }} />
+                <input type="text" placeholder={t.customValuePlaceholder} aria-label={t.customValuePlaceholder} value={customValue} onChange={(e) => setCustomValue(e.target.value)} suppressHydrationWarning style={inputStyle} />
               </div>
             );
           } else {
             return (
               <div key={row.key} style={cardStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <label style={{ ...labelStyle, fontWeight: '600' }}>{row.title}</label>
+                  <label htmlFor={`${row.key}-input`} style={{ ...labelStyle, fontWeight: '600' }}>{t.rows[row.key]}</label>
                   {row.key === 'comment' && selectedLayout === 'horizontal' && (
                     <div style={{ display: 'inline-flex', backgroundColor: '#1a1a1a', border: '1px solid #404040', borderRadius: '999px', padding: '2px' }}>
-                      {[[true, '왼쪽으로'], [false, '꽉 차게']].map(([val, lbl]) => (
+                      {[[true, t.commentLeft], [false, t.commentFull]].map(([val, lbl]) => (
                         <button
                           key={String(val)}
                           type="button"
                           onClick={() => setCommentNarrow(val)}
+                          aria-pressed={commentNarrow === val}
                           style={{
                             border: 'none',
                             borderRadius: '999px',
@@ -1214,12 +1287,12 @@ function FormPanel({
                   )}
                 </div>
                 {row.multiline ? (
-                  <textarea value={selections[row.key]}
+                  <textarea id={`${row.key}-input`} value={selections[row.key]}
                     onChange={(e) => { setFieldText(row.key, e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                     rows={3} suppressHydrationWarning
                     style={{ ...inputStyle, resize: 'vertical', overflow: 'hidden', fontFamily: 'inherit' }} />
                 ) : (
-                  <input type="text" value={selections[row.key]} onChange={(e) => setFieldText(row.key, e.target.value)} suppressHydrationWarning style={inputStyle} />
+                  <input id={`${row.key}-input`} type="text" value={selections[row.key]} onChange={(e) => setFieldText(row.key, e.target.value)} suppressHydrationWarning style={inputStyle} />
                 )}
               </div>
             );
@@ -1229,17 +1302,17 @@ function FormPanel({
 
       {/* 게임 체크리스트 */}
       <div style={cardStyle}>
-        <h2 style={h2Style}>게임 체크리스트</h2>
+        <h2 style={h2Style}>{t.gameChecklist}</h2>
         <div style={{ overflowX: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '150px 45px 45px 45px 45px', gap: '4px', alignItems: 'center', minWidth: '360px' }}>
             <div />
             {GAME_STATES.map((state) => (
-              <div key={state} style={{ fontWeight: '600', textAlign: 'center', fontSize: '10px', color: '#b0b0b0' }}>{GAME_STATE_LABELS[state]}</div>
+              <div key={state} style={{ fontWeight: '600', textAlign: 'center', fontSize: '10px', color: '#b0b0b0' }}>{GAME_STATE_LABELS[state][language]}</div>
             ))}
             {GAMES.map((game, idx) => (
               <Fragment key={game.key}>
                 {idx > 0 && idx % 5 === 0 && <div style={{ gridColumn: '1 / -1', height: '1px', backgroundColor: '#404040', margin: '6px 0' }} />}
-                <div style={{ fontSize: '12px', color: '#c0c0c0', textAlign: 'right', paddingRight: '12px' }}>{game.title}</div>
+                <div style={{ fontSize: '12px', color: '#c0c0c0', textAlign: 'right', paddingRight: '12px' }}>{game.title[language]}</div>
                 {GAME_STATES.map((state) => (
                   <div key={state} style={{ textAlign: 'center' }}>
                     <input type="radio" name={`game-${game.key}`} checked={gameStates[game.key] === state} onChange={() => setGameState(game.key, state)} style={{ cursor: 'pointer', accentColor }} suppressHydrationWarning />
@@ -1257,32 +1330,35 @@ function FormPanel({
         onMouseEnter={(e) => (e.target.style.opacity = '0.8')}
         onMouseLeave={(e) => (e.target.style.opacity = '1')}
         style={{ backgroundColor: accentColor, color: getTextOnAccent(accentColor), border: 'none', borderRadius: '4px', padding: '10px 16px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', transition: 'opacity 0.2s', width: '100%', marginBottom: '12px' }}>
-        이미지로 저장하기
+        {t.downloadImage}
       </button>
 
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <button onClick={handleResetAll} style={{ background: 'none', border: '1px solid #404040', borderRadius: '999px', color: '#999999', fontSize: '11px', cursor: 'pointer', padding: '5px 14px' }}>
-          모든 설정 초기화
+          {t.resetAll}
         </button>
       </div>
 
       {/* Footer */}
       <div style={{ borderTop: '1px solid #282828', paddingTop: '20px', paddingBottom: '20px', textAlign: 'center', fontSize: '11px' }}>
         <div style={{ color: '#a0a0a0' }}>
-          <a href="https://twitter.com/ppansuman" target="_blank" rel="noopener noreferrer" style={linkStyle}>사이트 제작: 빤수맨 X: @ppansuman</a>
+          <a href="https://twitter.com/ppansuman" target="_blank" rel="noopener noreferrer" style={linkStyle}>{t.siteCreatorPrefix}</a>
         </div>
-        <div style={{ color: '#a0a0a0', marginBottom: '12px' }}>
-          <a href="mailto:ppansuman@gmail.com" style={linkStyle}>이용 문의 및 건의사항: ppansuman@gmail.com</a>
+        <div style={{ color: '#a0a0a0', marginBottom: '4px' }}>
+          <a href="mailto:ppansuman@gmail.com" style={linkStyle}>{t.contactLabel} ppansuman@gmail.com</a>
           {' | '}
           <a href="https://github.com/ppansuman/rgg_friend" target="_blank" rel="noopener noreferrer" style={linkStyle}>GitHub</a>
           {' | '}
-          <a href="https://x.com/ppansuman/status/1727017805470638231?s=20" target="_blank" rel="noopener noreferrer" style={linkStyle}>이전 트친소표</a>
+          <a href="https://x.com/ppansuman/status/1727017805470638231?s=20" target="_blank" rel="noopener noreferrer" style={linkStyle}>{t.previousSheet}</a>
         </div>
-        <div style={{ color: '#606060', marginBottom: '6px' }}>마지마코 / 이시오다 / 하루카를 그려주시면 제작자가 기뻐합니다...💕</div>
-        <div style={{ ...footerTextStyle, fontSize: '10px', color: '#505050' }}>
-          <div>본 사이트는 용과 같이(Like a Dragon) 시리즈의 팬이 개인적으로 제작한 비상업적 트친소 및 소개표 생성기입니다.</div>
-          <div>RGG Studio / SEGA와 공식적인 관련이 없으며 수익을 목적으로 하지 않습니다.</div>
-          <div>용과 같이 시리즈 및 관련 소재의 저작권은 © RGG Studio / SEGA에 있습니다.</div>
+        <div style={{ color: '#a0a0a0', marginBottom: '12px' }}>
+          <a href="https://x.com/momoharu_kwm3/status/1731605059199549545?s=20" target="_blank" rel="noopener noreferrer" style={linkStyle}>{t.referenceCredit}</a>
+        </div>
+        <div style={{ color: '#9c9c9c', marginBottom: '6px' }}>{t.artRequest}</div>
+        <div style={{ ...footerTextStyle, fontSize: '10px', color: '#9c9c9c' }}>
+          <div>{t.disclaimer1}</div>
+          <div>{t.disclaimer2}</div>
+          <div>{t.disclaimer3}</div>
           <div style={{ paddingTop: '8px' }}>v{version} · Last Updated: {lastUpdated}</div>
         </div>
       </div>
@@ -1295,6 +1371,7 @@ function FormPanel({
         onApply={handleApplyHeaderImage}
         onReset={handleResetHeaderImageDraft}
         accentColor={accentColor}
+        t={t}
       />
     )}
     </>
@@ -1314,7 +1391,6 @@ export default function Home() {
   const [selectedLayout, setSelectedLayoutState] = useState('vertical');
   const [stickers, setStickers] = useState([]);
   const [selectedStickerId, setSelectedStickerId] = useState(null);
-  const [stickerLayer, setStickerLayer] = useState('above');
   const dragRef = useRef(null);
   const previewInnerRef = useRef(null);
   const stickerFileInputRef = useRef(null);
@@ -1338,6 +1414,8 @@ export default function Home() {
   });
   const [zoom, setZoom] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
+  const [language, setLanguageState] = useState(LANG.KO);
+  const t = UI_TEXT[language];
 
   useEffect(() => {
     const ac = lsGet('rgg_accentColor'); if (ac) setAccentColorState(ac);
@@ -1354,12 +1432,18 @@ export default function Home() {
     const hi = lsGet('rgg_headerImage'); if (hi) { try { setHeaderImageState(JSON.parse(hi)); } catch (e) { } }
     const ct = lsGet('rgg_customTitle'); if (ct) setCustomTitleState(ct);
     const cv = lsGet('rgg_customValue'); if (cv) setCustomValueState(cv);
-    const s = lsGet('rgg_selections'); if (s) setSelectionsState(JSON.parse(s));
+    const s = lsGet('rgg_selections'); if (s) setSelectionsState({ ...buildInitialSelections(), ...JSON.parse(s) });
     const sv = lsGet('rgg_spoilerValue'); if (sv) setSpoilerValueState(Number(sv));
     const so = lsGet('rgg_spoilerOther'); if (so) setSpoilerOtherState(so);
     const gs = lsGet('rgg_gameStates'); if (gs) setGameStatesState(JSON.parse(gs));
+    const lang = lsGet('rgg_language'); if (lang) setLanguageState(lang);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
+  const setLanguage = (v) => { setLanguageState(v); lsSet('rgg_language', v); };
   const setAccentColor = (v) => { setAccentColorState(v); lsSet('rgg_accentColor', v); };
   const setBgColor = (v) => { setBgColorState(v); lsSet('rgg_bgColor', v); };
   const setBadgeTextCustom = (v) => { setBadgeTextCustomState(v); lsSet('rgg_badgeTextCustom', v); };
@@ -1404,7 +1488,7 @@ export default function Home() {
   const handleHeaderImageFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > HEADER_IMAGE_MAX_SIZE_BYTES) { alert('이미지는 3MB 이하만 가능합니다.'); return; }
+    if (file.size > HEADER_IMAGE_MAX_SIZE_BYTES) { alert(t.alertImage3MB); return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const src = ev.target.result;
@@ -1448,10 +1532,10 @@ export default function Home() {
   const handleStickerFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > STICKER_MAX_SIZE_BYTES) { alert('이미지는 500KB 이하만 가능합니다.'); return; }
+    if (file.size > STICKER_MAX_SIZE_BYTES) { alert(t.alertImage500KB); return; }
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const newS = { id: Date.now(), src: ev.target.result, x: 30, y: 10, width: 20, rotation: 0, layer: stickerLayer };
+      const newS = { id: Date.now(), src: ev.target.result, x: 30, y: 10, width: 20, rotation: 0, layer: 'above' };
       const next = [...stickers, newS];
       saveStickers(next);
       setSelectedStickerId(newS.id);
@@ -1563,7 +1647,7 @@ export default function Home() {
 
   function toggleOption(row, value) {
     setSelections((prev) => {
-      const current = prev[row.key];
+      const current = prev[row.key] || [];
       const next = current.includes(value)
         ? current.filter((v) => v !== value)
         : [...current, value];
@@ -1639,12 +1723,12 @@ export default function Home() {
       }, 'image/png');
     } catch (e) {
       console.error('이미지 저장 실패:', e);
-      alert('이미지 저장에 실패했습니다.');
+      alert(t.alertImageSaveFail);
     }
   }
 
   function handleResetAll() {
-    if (!window.confirm('모든 설정을 초기화하시겠습니까?')) return;
+    if (!window.confirm(t.confirmResetAll)) return;
     setAccentColorState(DEFAULT_ACCENT);
     setBgColorState('#ffffff');
     setBadgeTextCustomState('#1a1a1a');
@@ -1666,6 +1750,7 @@ export default function Home() {
     const init = {};
     GAMES.forEach((g) => { init[g.key] = '대기'; });
     setGameStatesState(init);
+    setLanguageState(LANG.KO);
     LS_KEYS.forEach(lsRemove);
   }
 
@@ -1689,7 +1774,7 @@ export default function Home() {
       <input ref={headerImageFileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleHeaderImageFile} style={{ display: 'none' }} />
       {/* 저장용 원본 — 화면 밖에 숨김 */}
       <div ref={previewRef} style={{ position: 'fixed', left: '-9999px', top: 0, width: `${cardW}px`, pointerEvents: 'none', zIndex: -1 }}>
-        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} isExporting={true} />
+        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} isExporting={true} language={language} />
       </div>
       {/* 미리보기 */}
       <div ref={previewInnerRef} data-preview-inner style={{
@@ -1700,12 +1785,13 @@ export default function Home() {
         maxWidth: '100%',
         width: `${cardW}px`,
       }}>
-        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} selectedStickerId={selectedStickerId} onStickerMouseDown={handleStickerMouseDown} />
+        <PreviewCard data={previewData} accentColor={accentColor} bgColor={bgColor} badgeTextCustom={badgeTextCustom} familyIcon={familyIcon} selectedFont={selectedFont} layout={selectedLayout} stickers={stickers} selectedStickerId={selectedStickerId} onStickerMouseDown={handleStickerMouseDown} language={language} />
       </div>
     </div>
   );
 
   const formProps = {
+    language, setLanguage, t,
     accentColor, setAccentColor,
     bgColor, setBgColor,
     badgeTextCustom, setBadgeTextCustom,
@@ -1731,7 +1817,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>용스튜 소개표 생성기</title>
+        <title>{t.pageTitle}</title>
         <link rel="icon" href="/favicon.ico" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600&display=swap" />
@@ -1746,14 +1832,20 @@ export default function Home() {
           @font-face { font-family: 'KyoboHandwriting2019'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@1.0/KyoboHand.woff') format('woff'); font-weight: normal; font-display: swap; }
         `}</style>
         <style>{`.twemoji{height:1em!important;width:1em!important;display:inline!important;vertical-align:-0.1em!important}`}</style>
+        <style>{`
+          .skip-link { position: absolute; left: -9999px; top: 0; z-index: 2000; padding: 10px 16px; background: #ffffff; color: #111111; font-size: 13px; font-weight: 700; border-radius: 0 0 6px 0; }
+          .skip-link:focus { left: 0; }
+        `}</style>
       </Head>
+
+      <a href="#main-form" className="skip-link">{t.skipToForm}</a>
 
       <div style={{ backgroundColor: '#151515', color: '#e0e0e0' }}>
         {isMobile ? (
           /* 모바일 레이아웃 */
           <div style={{ minHeight: '100vh' }}>
             {PreviewArea}
-            <div style={{ maxWidth: '480px', margin: '0 auto', width: '100%' }}>
+            <div id="main-form" tabIndex={-1} style={{ maxWidth: '480px', margin: '0 auto', width: '100%' }}>
               <FormPanel {...formProps} />
             </div>
           </div>
@@ -1765,7 +1857,7 @@ export default function Home() {
               {PreviewArea}
             </div>
             {/* 오른쪽: 폼 — 고정 너비 */}
-            <div style={{ width: '480px', flexShrink: 0, overflowY: 'auto', backgroundColor: '#151515', borderLeft: '1px solid #282828' }}>
+            <div id="main-form" tabIndex={-1} style={{ width: '480px', flexShrink: 0, overflowY: 'auto', backgroundColor: '#151515', borderLeft: '1px solid #282828' }}>
               <div style={{ padding: '24px' }}>
                 <FormPanel {...formProps} />
               </div>
